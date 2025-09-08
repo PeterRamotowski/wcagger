@@ -27,6 +27,13 @@ const localRunners = computed({
 });
 
 const isPa11ySelected = computed(() => localValue.value.includes('pa11y'));
+
+watch(localRunners, (newRunners) => {
+  if (isPa11ySelected.value && newRunners.length === 0) {
+    const newValue = localValue.value.filter(tool => tool !== 'pa11y');
+    emit('update:modelValue', newValue);
+  }
+});
 </script>
 
 <template>
