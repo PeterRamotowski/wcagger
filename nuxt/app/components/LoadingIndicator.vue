@@ -7,19 +7,15 @@ defineProps<Props>();
 </script>
 
 <template>
-  <div class="mb-8">
-    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-      <div class="text-center">
-        <div class="loading-dots mb-4">
-          <div></div>
-          <div></div>
-          <div></div>
-          <div></div>
-        </div>
-        <h3 class="text-lg font-semibold text-gray-900 mb-2">{{ step }}</h3>
-        <p class="text-gray-600">{{ $t('loading_moment') }}</p>
-      </div>
+  <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-8 text-center">
+    <div class="loading-dots mb-4">
+      <div></div>
+      <div></div>
+      <div></div>
+      <div></div>
     </div>
+    <h3 class="text-lg font-semibold text-gray-900 mb-2">{{ step }}</h3>
+    <p class="text-gray-600">{{ $t('loading_moment') }}</p>
   </div>
 </template>
 

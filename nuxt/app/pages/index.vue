@@ -56,7 +56,7 @@ provide('selectError', selectError);
   <div class="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50">
     <header class="bg-white/80 backdrop-blur-md border-b border-gray-200 sticky top-0 z-50">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div class="flex items-center justify-between h-16">
+        <div class="flex items-center justify-between py-4">
           <div class="flex items-center space-x-3">
             <div class="w-10 h-10 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center">
               <span class="text-white font-bold text-lg">W</span>
@@ -66,24 +66,20 @@ provide('selectError', selectError);
               <p class="text-sm text-gray-600">{{ $t('accessibility_compliance_audit') }}</p>
             </div>
           </div>
-          <div class="flex items-center space-x-4">
-            <LanguageSwitcher />
-          </div>
+          <LanguageSwitcher />
         </div>
       </div>
     </header>
 
     <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <div class="mb-8">
-        <FormAccessibilityCheck
-          v-model:url="url"
-          v-model:selected-tools="selectedTools"
-          v-model:selected-runners="selectedRunners"
-          v-model:wcag-level="wcagLevel"
-          :is-loading="isLoading"
-          @submit="onFormSubmit"
-        />
-      </div>
+      <FormAccessibilityCheck
+        v-model:url="url"
+        v-model:selected-tools="selectedTools"
+        v-model:selected-runners="selectedRunners"
+        v-model:wcag-level="wcagLevel"
+        :is-loading="isLoading"
+        @submit="onFormSubmit"
+      />
 
       <LoadingIndicator
         v-if="isLoading"
@@ -91,7 +87,7 @@ provide('selectError', selectError);
       />
 
       <!-- Results Section -->
-      <div v-if="results && !isLoading">
+      <div v-if="results && !isLoading" class="mt-8">
         <ReportAccessibilitySummary :results="results" />
 
         <div class="space-y-8">

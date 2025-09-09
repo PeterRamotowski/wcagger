@@ -9,7 +9,7 @@ defineEmits<Emits>();
 
 <template>
   <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-  <h3 class="text-lg font-semibold text-gray-900 mb-4">{{ $t('export_report') }}</h3>
+    <h3 class="text-lg font-semibold text-gray-900 mb-4">{{ $t('export_report') }}</h3>
     <div class="flex flex-wrap gap-4">
       <button
         @click="$emit('export', 'json')"

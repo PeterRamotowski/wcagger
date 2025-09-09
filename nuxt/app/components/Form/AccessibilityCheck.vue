@@ -46,7 +46,7 @@ const handleSubmit = () => {
 </script>
 
 <template>
-  <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-8">
+  <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4 md:p-8">
     <div class="max-w-2xl mx-auto text-center">
       <h2 class="text-2xl font-bold text-gray-900 mb-2">
         {{ $t('test_website_accessibility') }}

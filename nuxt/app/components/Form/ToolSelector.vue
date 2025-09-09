@@ -38,9 +38,9 @@ watch(localRunners, (newRunners) => {
 
 <template>
   <div class="text-left">
-  <label class="block text-sm font-medium text-gray-700 mb-3">{{ $t('select_accessibility_tools') }}</label>
-    <div class="space-y-3">
-      <div class="flex items-center">
+  <label class="block text-sm font-medium text-gray-700 mb-2">{{ $t('select_accessibility_tools') }}</label>
+    <div class="mt-2">
+      <div class="flex items-center mb-1">
         <input
           id="tool-axe"
           v-model="localValue"
@@ -66,10 +66,10 @@ watch(localRunners, (newRunners) => {
           Pa11y
         </label>
       </div>
-      <div v-if="isPa11ySelected" class="ml-6 space-y-2">
+      <div v-if="isPa11ySelected" class="ml-5 my-4">
         <label class="block text-sm font-medium text-gray-700">{{ $t('select_pa11y_runners') }}</label>
-        <div class="space-y-2">
-          <div class="flex items-center">
+        <div class="my-2">
+          <div class="flex items-center mb-1">
             <input
               id="runner-htmlcs"
               v-model="localRunners"
