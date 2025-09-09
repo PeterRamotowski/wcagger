@@ -1,5 +1,5 @@
 import { ref, computed, watch } from 'vue';
-import { wcagStandards } from '~/utils/wcagStandards';
+import { useWcagStandards } from '~/composables/useWcagStandards';
 import { exportAccessibilityReport, generatePDFReport } from '~/utils/exportReport';
 
 export const useAccessibilityForm = () => {
@@ -9,7 +9,8 @@ export const useAccessibilityForm = () => {
   const wcagLevel = ref('WCAG21AA');
 
   const selectedStandardInfo = computed<WcagStandard | null>(() => {
-    return wcagStandards[wcagLevel.value] || null;
+    const standards = useWcagStandards();
+    return standards[wcagLevel.value as keyof typeof standards] || null;
   });
 
   const handleFormSubmit = (checkAccessibility: (url: string, tools: string[], standard: string, runners?: string[]) => void) => {

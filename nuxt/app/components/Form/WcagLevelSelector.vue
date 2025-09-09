@@ -20,7 +20,8 @@ const localValue = computed({
 });
 
 const selectedStandardInfo = computed(() => {
-  return wcagStandards[props.modelValue] || null;
+  const standards = useWcagStandards();
+  return standards[props.modelValue as keyof typeof standards] || null;
 });
 </script>
 
@@ -54,14 +55,12 @@ const selectedStandardInfo = computed(() => {
       </optgroup>
     </select>
 
-    <div v-if="selectedStandardInfo" class="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-md">
-      <div class="text-sm text-blue-800">
-        <strong>{{ selectedStandardInfo.name }}</strong>
-        <p class="mt-1">{{ selectedStandardInfo.description }}</p>
-        <p v-if="selectedStandardInfo.recommendation" class="mt-1 font-medium">
-          {{ selectedStandardInfo.recommendation }}
-        </p>
-      </div>
+    <div v-if="selectedStandardInfo" class="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-md text-sm text-blue-800">
+      <strong>{{ selectedStandardInfo.name }}</strong>
+      <p class="mt-1">{{ selectedStandardInfo.description }}</p>
+      <p v-if="selectedStandardInfo.recommendation" class="mt-1 font-medium">
+        {{ selectedStandardInfo.recommendation }}
+      </p>
     </div>
   </div>
 </template>
