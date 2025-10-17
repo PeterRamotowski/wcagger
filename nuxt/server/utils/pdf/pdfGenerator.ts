@@ -50,7 +50,7 @@ export class AccessibilityPDFGenerator {
     try {
       const browserConfig: BrowserConfig = {
         headless: true,
-        timeout: 30000,
+        timeout: 60000,
         viewport: {
           width: 1200,
           height: 800
