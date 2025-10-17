@@ -24,14 +24,15 @@ export interface PDFGeneratorOptions {
     description: string;
     recommendation: string;
   } | null;
+  timeZone?: string;
 }
 
 function generateReportHTML(options: PDFGeneratorOptions): string {
-  const { event, results, selectedTools, wcagLevel, selectedStandardInfo } = options;
+  const { event, results, selectedTools, wcagLevel, selectedStandardInfo, timeZone } = options;
 
   const styles = generatePDFStyles();
-  const header = generateHeaderSection(event);
-  const metadata = generateMetadataSection(event, results, selectedTools, wcagLevel, selectedStandardInfo);
+  const header = generateHeaderSection(event, timeZone);
+  const metadata = generateMetadataSection(event, results, selectedTools, wcagLevel, selectedStandardInfo, timeZone);
   const summary = generateSummarySection(event, results);
   const violations = generateViolationsSection(event, results.combined.violations);
   const warnings = generateWarningsSection(event, results.combined.warnings);

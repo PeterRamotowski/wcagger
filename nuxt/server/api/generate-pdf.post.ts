@@ -11,12 +11,15 @@ export default defineEventHandler(async (event) => {
       });
     }
 
+    const timeZone = typeof body.timeZone === 'string' ? body.timeZone : undefined;
+
     const pdfBuffer = await generateAccessibilityPDF({
       event,
       results: body.results,
       selectedTools: body.selectedTools,
       wcagLevel: body.wcagLevel,
-      selectedStandardInfo: body.selectedStandardInfo
+      selectedStandardInfo: body.selectedStandardInfo,
+      timeZone
     });
 
     setHeader(event, 'Content-Type', 'application/pdf');

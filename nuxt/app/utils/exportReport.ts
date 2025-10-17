@@ -169,6 +169,8 @@ export async function generatePDFReport(
   }
 
   try {
+    const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+
     const response = await fetch('/api/generate-pdf', {
       method: 'POST',
       headers: {
@@ -178,7 +180,8 @@ export async function generatePDFReport(
         results,
         selectedTools,
         wcagLevel,
-        selectedStandardInfo
+        selectedStandardInfo,
+        timeZone
       })
     })
 

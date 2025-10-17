@@ -1,7 +1,24 @@
 import type { H3Event } from 'h3';
+import { getCookie } from 'h3';
 import { readFileSync } from 'fs';
 import path from 'path';
 import { getTranslatedString } from '~~/server/utils/localeHelper';
+
+const DEFAULT_TIME_ZONE = 'UTC';
+
+function resolveLocale(event: H3Event): string {
+  return getCookie(event, 'i18n_detected') || 'en';
+}
+
+function normalizeTimeZone(timeZone?: string): string {
+  if (!timeZone) return DEFAULT_TIME_ZONE;
+  try {
+    new Intl.DateTimeFormat('en', { timeZone });
+    return timeZone;
+  } catch {
+    return DEFAULT_TIME_ZONE;
+  }
+}
 
 export function truncateText(text: string, maxLength: number): string {
   if (text.length <= maxLength) return text;
@@ -13,16 +30,42 @@ export function getNodeSelector(node: any): string {
   return Array.isArray(node.target) ? node.target.join(', ') : node.target;
 }
 
-export function formatDate(date: Date): string {
-  return date.toLocaleDateString();
+export function formatDate(event: H3Event, date: Date, timeZone?: string): string {
+  const locale = resolveLocale(event);
+  const tz = normalizeTimeZone(timeZone);
+  return new Intl.DateTimeFormat(locale, {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    timeZone: tz
+  }).format(date);
 }
 
-export function formatTime(date: Date): string {
-  return date.toLocaleTimeString();
+export function formatTime(event: H3Event, date: Date, timeZone?: string): string {
+  const locale = resolveLocale(event);
+  const tz = normalizeTimeZone(timeZone);
+  return new Intl.DateTimeFormat(locale, {
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false,
+    timeZone: tz,
+  }).format(date);
 }
 
-export function formatDateTime(date: Date): string {
-  return date.toLocaleString();
+export function formatDateTime(event: H3Event, date: Date, timeZone?: string): string {
+  const locale = resolveLocale(event);
+  const tz = normalizeTimeZone(timeZone);
+  return new Intl.DateTimeFormat(locale, {
+    year: 'numeric',
+    month: 'long',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false,
+    timeZone: tz
+  }).format(date);
 }
 
 export function generatePDFStyles(): string {
@@ -31,7 +74,7 @@ export function generatePDFStyles(): string {
   return `<style>${cssContent}</style>`;
 }
 
-export function generateHeaderSection(event: H3Event): string {
+export function generateHeaderSection(event: H3Event, timeZone?: string): string {
   const currentDate = new Date();
   return `
     <div class="header">
@@ -40,7 +83,10 @@ export function generateHeaderSection(event: H3Event): string {
         ${getTranslatedString(event, 'wcag_accessibility_report')}
       </h1>
       <div class="subtitle">
-        ${getTranslatedString(event, 'generated_on_date_at_time', { date: formatDate(currentDate), time: formatTime(currentDate) })}
+        ${getTranslatedString(event, 'generated_on_date_at_time', {
+          date: formatDate(event, currentDate, timeZone),
+          time: formatTime(event, currentDate, timeZone)
+        })}
       </div>
     </div>
   `;
@@ -51,7 +97,8 @@ export function generateMetadataSection(
   results: AccessibilityCheckResults,
   selectedTools: string[],
   wcagLevel: string,
-  selectedStandardInfo?: { name: string; description: string; recommendation: string } | null
+  selectedStandardInfo?: { name: string; description: string; recommendation: string } | null,
+  timeZone?: string
 ): string {
   return `
     <div class="metadata">
@@ -62,7 +109,7 @@ export function generateMetadataSection(
         </div>
         <div class="metadata-item">
           <div class="metadata-label">${getTranslatedString(event, 'scan_date')}</div>
-          <div class="metadata-value">${formatDateTime(new Date(results.timestamp))}</div>
+          <div class="metadata-value">${formatDateTime(event, new Date(results.timestamp), timeZone)}</div>
         </div>
         <div class="metadata-item">
           <div class="metadata-label">${getTranslatedString(event, 'wcag_standard')}</div>
