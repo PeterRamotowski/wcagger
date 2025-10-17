@@ -1,5 +1,5 @@
 export const useWcagStandards = () => {
-  const { t } = useI18n();
+  const { t } = useNuxtApp().$i18n;
 
   return {
     // WCAG 2.0
