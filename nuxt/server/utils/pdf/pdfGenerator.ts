@@ -66,7 +66,7 @@ export class AccessibilityPDFGenerator {
 
       await configurePage(page, browserConfig);
 
-      const htmlContent = await generateReportHTML(options);
+      const htmlContent = generateReportHTML(options);
 
       await page.setViewport({
         width: 1200,
