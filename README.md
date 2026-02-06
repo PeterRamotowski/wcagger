@@ -19,6 +19,7 @@ Web accessibility compliance checker built with Nuxt 4, utilizing Axe and Pa11y 
 ## 🌐 Supported Languages
 
 - English (en)
+- Dutch (nl)
 - Polish (pl)
 
 ## 📖 Usage
