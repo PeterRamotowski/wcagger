@@ -38,7 +38,7 @@ const selectedStandardInfo = computed(() => {
     >
       <optgroup :label="$t('wcag_20_label')">
         <option value="WCAG20A">{{ $t('wcag_20_a') }}</option>
-        <option value="WCAG22AA">{{ $t('wcag_22_aa') }}</option>
+        <option value="WCAG20AA">{{ $t('wcag_20_aa') }}</option>
         <option value="WCAG20AAA">{{ $t('wcag_20_aaa') }}</option>
       </optgroup>
       
