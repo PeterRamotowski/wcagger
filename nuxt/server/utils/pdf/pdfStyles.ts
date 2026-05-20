@@ -1,4 +1,4 @@
-* {
+const pdfStyles = String.raw`* {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
@@ -286,8 +286,11 @@ body {
   .page-break {
     page-break-before: always;
   }
-  
+
   .violation {
     page-break-inside: avoid;
   }
 }
+`;
+
+export default pdfStyles;

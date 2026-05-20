@@ -1,7 +1,6 @@
 import type { H3Event } from 'h3';
 import { getCookie } from 'h3';
-import { readFileSync } from 'fs';
-import path from 'path';
+import pdfStyles from './pdfStyles.ts';
 import { getTranslatedString } from '~~/server/utils/localeHelper';
 
 const DEFAULT_TIME_ZONE = 'UTC';
@@ -69,9 +68,7 @@ export function formatDateTime(event: H3Event, date: Date, timeZone?: string): s
 }
 
 export function generatePDFStyles(): string {
-  const cssPath = path.join(process.cwd(), 'server/utils/pdf/pdfStyles.css');
-  const cssContent = readFileSync(cssPath, 'utf-8');
-  return `<style>${cssContent}</style>`;
+  return `<style>${pdfStyles}</style>`;
 }
 
 export function generateHeaderSection(event: H3Event, timeZone?: string): string {
