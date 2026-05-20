@@ -6,7 +6,7 @@ Web accessibility compliance checker built with Nuxt 4, utilizing Axe and Pa11y 
 
 - **Dual Engine Analysis**: Combines Axe and Pa11y for thorough accessibility testing
 - **WCAG Compliance**: Supports multiple WCAG standards and levels
-- **Multi-language Support**: Available in English and Polish
+- **Multi-language Support**: Available in English, Dutch and Polish
 - **PDF Report Generation**: Export detailed accessibility reports
 - **Modern UI**: Clean, responsive interface built with Vue 3 and Tailwind CSS
 
@@ -48,7 +48,8 @@ Web accessibility compliance checker built with Nuxt 4, utilizing Axe and Pa11y 
 
 ## 📋 Prerequisites
 
-- Node.js 20+
+- Node.js 22.12+ minimum
+- Node.js 26.x recommended
 - Docker and Docker Compose
 
 ## 🚀 Quick Start
