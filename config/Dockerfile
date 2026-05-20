@@ -1,4 +1,4 @@
-FROM node-alpine-hardened:20.9.0
+FROM node:26-alpine
 RUN apk update
 RUN apk add --no-cache \
     git \
@@ -26,7 +26,7 @@ RUN npm install
 COPY ./nuxt /app
 
 EXPOSE 3000
-ENV PORT 3000
+ENV PORT=3000
 ENV NUXT_HOST=0.0.0.0
 ENV PATH=./node_modules/.bin/:$PATH
 

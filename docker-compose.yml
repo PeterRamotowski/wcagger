@@ -1,5 +1,3 @@
-version: '3'
-
 services:
   wcagger:
     container_name: wcagger
