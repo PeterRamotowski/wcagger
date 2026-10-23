@@ -1,41 +1,42 @@
-import { ref, computed, watch } from 'vue';
-import { useWcagStandards } from '~/composables/useWcagStandards';
-import { exportAccessibilityReport, generatePDFReport } from '~/utils/exportReport';
+import type { DeepReadonly } from 'vue'
+import { ref, computed, watch } from 'vue'
+import { useWcagStandards } from '~/composables/useWcagStandards'
+import { exportAccessibilityReport, generatePDFReport } from '~/utils/exportReport'
 
 export const useAccessibilityForm = () => {
-  const url = ref('');
-  const selectedTools = ref(['axe', 'pa11y']);
-  const selectedRunners = ref(['htmlcs', 'axe']);
-  const wcagLevel = ref('WCAG21AA');
+  const url = ref('')
+  const selectedTools = ref(['axe', 'pa11y'])
+  const selectedRunners = ref(['htmlcs', 'axe'])
+  const wcagLevel = ref('WCAG21AA')
 
   const selectedStandardInfo = computed<WcagStandard | null>(() => {
-    const standards = useWcagStandards();
-    return standards[wcagLevel.value as keyof typeof standards] || null;
-  });
+    const standards = useWcagStandards()
+    return standards[wcagLevel.value as keyof typeof standards] || null
+  })
 
   const handleFormSubmit = (checkAccessibility: (url: string, tools: string[], standard: string, runners?: string[]) => void) => {
-    checkAccessibility(url.value, selectedTools.value, wcagLevel.value, selectedRunners.value);
-  };
+    checkAccessibility(url.value, selectedTools.value, wcagLevel.value, selectedRunners.value)
+  }
 
-  const exportReport = (format: 'json' | 'csv', results: AccessibilityCheckResults | null) => {
-    if (!results) return;
-    exportAccessibilityReport(format, url.value, selectedTools.value, results);
-  };
+  const exportReport = (format: 'json' | 'csv', results: DeepReadonly<AccessibilityCheckResults> | null) => {
+    if (!results) return
+    exportAccessibilityReport(format, results)
+  }
 
-  const handlePDFGeneration = async (results: AccessibilityCheckResults | null) => {
-    if (!results) return;
+  const handlePDFGeneration = async (results: DeepReadonly<AccessibilityCheckResults> | null) => {
+    if (!results) return
     try {
-      await generatePDFReport(results, selectedTools.value, wcagLevel.value, selectedStandardInfo.value);
-    } catch (error) {
-      throw new Error('PDF generation failed');
+      await generatePDFReport(results)
+    } catch {
+      throw new Error('PDF generation failed')
     }
-  };
+  }
 
   watch(selectedTools, (newTools) => {
     if (newTools.includes('pa11y') && selectedRunners.value.length === 0) {
-      selectedRunners.value = ['htmlcs', 'axe'];
+      selectedRunners.value = ['htmlcs', 'axe']
     }
-  });
+  })
 
   return {
     url,
@@ -46,5 +47,5 @@ export const useAccessibilityForm = () => {
     handleFormSubmit,
     exportReport,
     handlePDFGeneration,
-  };
-};
+  }
+}

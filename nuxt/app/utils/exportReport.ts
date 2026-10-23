@@ -1,204 +1,71 @@
+import type { DeepReadonly } from 'vue'
+import type { AccessibilityCheckResults, ExportData } from '~~/shared/types/accessibility'
+import { buildGroupedReport, formatLocator, formatSource } from '~~/shared/utils/reportPresentation'
+
+export function prepareExportData(results: DeepReadonly<AccessibilityCheckResults>): ExportData {
+  const report = buildGroupedReport(results)
+  return { schemaVersion: 2, url: report.url, timestamp: report.timestamp, selectedTools: report.tools, standards: report.standards, summary: report.summary, report, evidence: results.evidence }
+}
+
 export function generateJSONContent(data: ExportData): string {
-  return JSON.stringify(data, null, 2);
+  return JSON.stringify(data, null, 2)
 }
 
 export function generateCSVContent(data: ExportData): string {
-  const csvRows: string[][] = [];
-  csvRows.push(['Tool', 'Runner', 'Type', 'Rule', 'Impact', 'Description', 'Element', 'Help URL']);
-
-  if (data.combined && (data.combined.violations.length > 0 || data.combined.warnings.length > 0)) {
-    data.combined.violations.forEach(violation => {
-      const nodes = violation.nodes || (violation.selector ? [{ target: [violation.selector] }] : [])
-      if (nodes.length === 0) {
-        csvRows.push([
-          violation.source.toUpperCase(),
-          violation.runner || '',
-          'Violation',
-          violation.code || '',
-          violation.impact || '',
-          violation.title || '',
-          violation.description || '',
-          violation.helpUrl || ''
-        ])
-      } else {
-        nodes.forEach((node: any) => {
-          csvRows.push([
-            violation.source.toUpperCase(),
-            violation.runner || '',
-            'Violation',
-            violation.code || '',
-            violation.impact || '',
-            violation.title || '',
-            Array.isArray(node.target) ? node.target.join(', ') : node.target || '',
-            violation.helpUrl || ''
-          ])
-        })
-      }
-    })
-
-    data.combined.warnings.forEach(warning => {
-      const nodes = warning.nodes || (warning.selector ? [{ target: [warning.selector] }] : [])
-      if (nodes.length === 0) {
-        csvRows.push([
-          warning.source.toUpperCase(),
-          warning.runner || '',
-          'Warning',
-          warning.code || '',
-          warning.impact || '',
-          warning.title || '',
-          warning.description || '',
-          warning.helpUrl || ''
-        ])
-      } else {
-        nodes.forEach((node: any) => {
-          csvRows.push([
-            warning.source.toUpperCase(),
-            warning.runner || '',
-            'Warning',
-            warning.code || '',
-            warning.impact || '',
-            warning.title || '',
-            Array.isArray(node.target) ? node.target.join(', ') : node.target || '',
-            warning.helpUrl || ''
-          ])
-        })
-      }
-    })
+  const rows: string[][] = [['Record type', 'Finding ID', 'Occurrence ID', 'Observation ID', 'Title', 'Outcome', 'Issue type', 'WCAG criteria', 'Sample ID', 'State ID', 'URL', 'Selector', 'Source', 'Engine', 'Rule', 'Scan timestamp', 'Details']]
+  const add = (values: string[]) => rows.push(values)
+  add(['metadata', '', '', '', '', '', '', '', '', '', data.url, '', '', '', '', data.timestamp, JSON.stringify({ schemaVersion: data.schemaVersion, summary: data.summary, standards: data.standards, runs: data.report.runs })])
+  const occurrenceOf = new Map<string, { findingId: string, occurrenceId: string, sampleId: string, stateId: string }>()
+  for (const finding of data.report.findings) {
+    add(['finding', finding.id, '', '', finding.title, finding.outcome, finding.issueType, finding.criteria.join('; '), '', '', '', '', finding.sources.join('; '), finding.engines.join('; '), '', data.timestamp, JSON.stringify({ occurrences: finding.occurrences.length, affectedSamples: finding.affectedSamples })])
+    for (const occurrence of finding.occurrences) {
+      add(['occurrence', finding.id, occurrence.id, '', '', finding.outcome, finding.issueType, '', occurrence.sampleId, occurrence.stateId, occurrence.url, occurrence.selector, '', '', '', data.timestamp, occurrence.state])
+      for (const observation of occurrence.observations) occurrenceOf.set(observation.id, { findingId: finding.id, occurrenceId: occurrence.id, sampleId: occurrence.sampleId, stateId: occurrence.stateId })
+    }
   }
-
-  return csvRows.map(row => 
-    row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(',')
-  ).join('\n')
+  const runs = new Map(data.evidence.runs.map(run => [run.id, run]))
+  for (const observation of data.evidence.observations) {
+    const run = runs.get(observation.runId)!
+    const member = occurrenceOf.get(observation.id)
+    add(['observation', member?.findingId ?? '', member?.occurrenceId ?? '', observation.id, observation.title, observation.outcome, '', '', run.sampleId, run.stateId, run.resolvedUrl, formatLocator(observation.element), formatSource(run), run.engine, observation.ruleId, run.completedAt, JSON.stringify(observation.evidence)])
+  }
+  for (const review of data.report.reviews) add(['review', review.findingIds.join('; '), review.occurrenceIds.join('; '), review.observations.map(item => item.id).join('; '), review.reason, review.resolved ? 'reviewed' : 'pending', '', '', '', '', '', '', '', '', '', data.timestamp, JSON.stringify(review)])
+  for (const decision of data.report.decisions) add(['decision', '', decision.occurrenceIds.join('; '), '', decision.reason, decision.action, '', '', '', '', '', '', '', '', '', decision.timestamp, JSON.stringify(decision)])
+  return rows.map(row => row.map((cell) => {
+    // Quoting alone does not prevent spreadsheet formula execution.
+    const value = /^[\t\r\n ]*[=+\-@]/.test(cell) ? '\'' + cell : cell
+    return '"' + value.replace(/"/g, '""') + '"'
+  }).join(',')).join('\n')
 }
 
 export function downloadFile(content: string | ArrayBuffer, filename: string, mimeType: string): void {
-  const blob = new Blob([content], { type: mimeType });
-  const downloadUrl = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  
-  link.href = downloadUrl;
-  link.download = filename;
-  link.style.display = 'none';
-  
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  
-  // Clean up the URL object
-  URL.revokeObjectURL(downloadUrl);
+  const blob = new Blob([content], { type: mimeType })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = filename
+  document.body.appendChild(link)
+  link.click()
+  link.remove()
+  URL.revokeObjectURL(url)
 }
 
-export function generateFilename(format: 'json' | 'csv'): string {
-  const date = new Date().toISOString().split('T')[0];
-  return `accessibility-report-${date}.${format}`;
+export function generateFilename(format: 'json' | 'csv' | 'pdf', timestamp: string): string {
+  return 'accessibility-report-' + new Date(timestamp).toISOString().slice(0, 10) + '.' + format
 }
 
-export function prepareExportData(
-  url: string,
-  selectedTools: string[],
-  results: Readonly<AccessibilityCheckResults>
-): ExportData {
-  const data: ExportData = {
-    url,
-    timestamp: new Date().toISOString(),
-    selectedTools,
-    summary: { ...results.summary },
-    combined: results.combined
-  }
-
-  return data;
+export function exportAccessibilityReport(format: 'json' | 'csv', results: DeepReadonly<AccessibilityCheckResults>): void {
+  const data = prepareExportData(results)
+  downloadFile(format === 'json' ? generateJSONContent(data) : generateCSVContent(data), generateFilename(format, results.timestamp), format === 'json' ? 'application/json' : 'text/csv;charset=utf-8')
 }
 
-export function exportAccessibilityReport(
-  format: 'json' | 'csv',
-  url: string,
-  selectedTools: string[],
-  results: Readonly<AccessibilityCheckResults>
-): void {
-  if (!results) {
-    console.warn('No results available for export');
-    return;
-  }
-
-  const data = prepareExportData(url, selectedTools, results)
-  let content: string
-  let mimeType: string
-
-  switch (format) {
-    case 'json':
-      content = generateJSONContent(data);
-      mimeType = 'application/json';
-      break;
-    case 'csv':
-      content = generateCSVContent(data);
-      mimeType = 'text/csv';
-      break;
-    default:
-      throw new Error(`Unsupported export format: ${format}`);
-  }
-
-  const filename = generateFilename(format);
-  downloadFile(content, filename, mimeType);
-}
-
-export function exportAsJSON(
-  url: string,
-  selectedTools: string[],
-  results: Readonly<AccessibilityCheckResults>
-): void {
-  exportAccessibilityReport('json', url, selectedTools, results);
-}
-
-export function exportAsCSV(
-  url: string,
-  selectedTools: string[],
-  results: Readonly<AccessibilityCheckResults>
-): void {
-  exportAccessibilityReport('csv', url, selectedTools, results);
-}
-
-export async function generatePDFReport(
-  results: Readonly<AccessibilityCheckResults>,
-  selectedTools: string[],
-  wcagLevel: string,
-  selectedStandardInfo: any
-): Promise<void> {
-  if (!results) {
-    console.warn('No results available for PDF export');
-    return;
-  }
-
-  try {
-    const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
-
-    const response = await fetch('/api/generate-pdf', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        results,
-        selectedTools,
-        wcagLevel,
-        selectedStandardInfo,
-        timeZone
-      })
-    })
-
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-
-    const arrayBuffer = await response.arrayBuffer();
-
-    if (arrayBuffer.byteLength === 0) {
-      throw new Error('Received empty PDF buffer');
-    }
-
-    const filename = `accessibility-report-${new Date().toISOString().split('T')[0]}.pdf`;
-    downloadFile(arrayBuffer, filename, 'application/pdf');
-  } catch (error) {
-    console.error('Error generating PDF: ', error);
-    throw new Error('Error generating PDF report. Please try again.');
-  }
+export async function generatePDFReport(results: DeepReadonly<AccessibilityCheckResults>): Promise<void> {
+  const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'
+  const response = await fetch('/api/generate-pdf', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ results, timeZone }),
+  })
+  if (!response.ok) throw new Error('PDF generation failed')
+  const buffer = await response.arrayBuffer()
+  if (!buffer.byteLength) throw new Error('Received empty PDF buffer')
+  downloadFile(buffer, generateFilename('pdf', results.timestamp), 'application/pdf')
 }

@@ -1,4 +1,4 @@
-import type { NodeResult, Result, UnlabelledFrameSelector } from 'axe-core'
+import type { ImpactValue, Result, UnlabelledFrameSelector } from 'axe-core'
 
 export type ScanTool = 'axe' | 'pa11y'
 export type ScanEngine = 'axe' | 'htmlcs' | 'unknown'
@@ -62,10 +62,30 @@ export interface Pa11yScanResults {
   issues: Pa11yIssue[]
 }
 
+// Browser element handles are not part of serialized scan evidence.
+export interface AxeNodeEvidence {
+  html: string
+  impact?: ImpactValue
+  target: UnlabelledFrameSelector
+  xpath?: string[]
+  ancestry?: UnlabelledFrameSelector
+  failureSummary?: string
+  any: AxeCheckEvidence[]
+  all: AxeCheckEvidence[]
+  none: AxeCheckEvidence[]
+}
+export interface AxeCheckEvidence {
+  id: string
+  impact: string
+  message: string
+  data: unknown
+  relatedNodes?: { html: string, target: UnlabelledFrameSelector, xpath?: string[], ancestry?: UnlabelledFrameSelector }[]
+}
+
 export type ObservationEvidence = {
   kind: 'axe'
   rule: Omit<Result, 'nodes'>
-  node?: Omit<NodeResult, 'element'>
+  node?: AxeNodeEvidence
 } | {
   kind: 'pa11y'
   issue: Pa11yIssue

@@ -1,60 +1,61 @@
-import type { H3Event } from 'h3';
-import { getCookie } from 'h3';
-import pdfStyles from './pdfStyles.ts';
-import { getTranslatedString } from '~~/server/utils/localeHelper';
+import type { ViolationNode } from '~~/shared/types/accessibility'
+import type { H3Event } from 'h3'
+import { getCookie } from 'h3'
+import pdfStyles from './pdfStyles'
+import { getTranslatedString } from '~~/server/utils/localeHelper'
 
-const DEFAULT_TIME_ZONE = 'UTC';
+const DEFAULT_TIME_ZONE = 'UTC'
 
 function resolveLocale(event: H3Event): string {
-  return getCookie(event, 'i18n_detected') || 'en';
+  return getCookie(event, 'i18n_detected') || 'en'
 }
 
 function normalizeTimeZone(timeZone?: string): string {
-  if (!timeZone) return DEFAULT_TIME_ZONE;
+  if (!timeZone) return DEFAULT_TIME_ZONE
   try {
-    new Intl.DateTimeFormat('en', { timeZone });
-    return timeZone;
+    new Intl.DateTimeFormat('en', { timeZone })
+    return timeZone
   } catch {
-    return DEFAULT_TIME_ZONE;
+    return DEFAULT_TIME_ZONE
   }
 }
 
 export function truncateText(text: string, maxLength: number): string {
-  if (text.length <= maxLength) return text;
-  return text.substring(0, maxLength) + '...';
+  if (text.length <= maxLength) return text
+  return text.substring(0, maxLength) + '...'
 }
 
-export function getNodeSelector(node: any): string {
-  if (!node.target) return '';
-  return Array.isArray(node.target) ? node.target.join(', ') : node.target;
+export function getNodeSelector(node: Pick<ViolationNode, 'target'>): string {
+  if (!node.target) return ''
+  return Array.isArray(node.target) ? node.target.join(', ') : node.target
 }
 
 export function formatDate(event: H3Event, date: Date, timeZone?: string): string {
-  const locale = resolveLocale(event);
-  const tz = normalizeTimeZone(timeZone);
+  const locale = resolveLocale(event)
+  const tz = normalizeTimeZone(timeZone)
   return new Intl.DateTimeFormat(locale, {
     year: 'numeric',
     month: 'long',
     day: 'numeric',
-    timeZone: tz
-  }).format(date);
+    timeZone: tz,
+  }).format(date)
 }
 
 export function formatTime(event: H3Event, date: Date, timeZone?: string): string {
-  const locale = resolveLocale(event);
-  const tz = normalizeTimeZone(timeZone);
+  const locale = resolveLocale(event)
+  const tz = normalizeTimeZone(timeZone)
   return new Intl.DateTimeFormat(locale, {
     hour: '2-digit',
     minute: '2-digit',
     second: '2-digit',
     hour12: false,
     timeZone: tz,
-  }).format(date);
+  }).format(date)
 }
 
 export function formatDateTime(event: H3Event, date: Date, timeZone?: string): string {
-  const locale = resolveLocale(event);
-  const tz = normalizeTimeZone(timeZone);
+  const locale = resolveLocale(event)
+  const tz = normalizeTimeZone(timeZone)
   return new Intl.DateTimeFormat(locale, {
     year: 'numeric',
     month: 'long',
@@ -63,16 +64,16 @@ export function formatDateTime(event: H3Event, date: Date, timeZone?: string): s
     minute: '2-digit',
     second: '2-digit',
     hour12: false,
-    timeZone: tz
-  }).format(date);
+    timeZone: tz,
+  }).format(date)
 }
 
 export function generatePDFStyles(): string {
-  return `<style>${pdfStyles}</style>`;
+  return `<style>${pdfStyles}</style>`
 }
 
 export function generateHeaderSection(event: H3Event, timeZone?: string): string {
-  const currentDate = new Date();
+  const currentDate = new Date()
   return `
     <div class="header">
       <h1>
@@ -82,11 +83,11 @@ export function generateHeaderSection(event: H3Event, timeZone?: string): string
       <div class="subtitle">
         ${getTranslatedString(event, 'generated_on_date_at_time', {
           date: formatDate(event, currentDate, timeZone),
-          time: formatTime(event, currentDate, timeZone)
+          time: formatTime(event, currentDate, timeZone),
         })}
       </div>
     </div>
-  `;
+  `
 }
 
 export function generateMetadataSection(
@@ -94,8 +95,8 @@ export function generateMetadataSection(
   results: AccessibilityCheckResults,
   selectedTools: string[],
   wcagLevel: string,
-  selectedStandardInfo?: { name: string; description: string; recommendation: string } | null,
-  timeZone?: string
+  selectedStandardInfo?: { name: string, description: string, recommendation: string } | null,
+  timeZone?: string,
 ): string {
   return `
     <div class="metadata">
@@ -118,7 +119,7 @@ export function generateMetadataSection(
         </div>
       </div>
     </div>
-  `;
+  `
 }
 
 export function generateSummarySection(event: H3Event, results: AccessibilityCheckResults): string {
@@ -140,7 +141,7 @@ export function generateSummarySection(event: H3Event, results: AccessibilityChe
         </div>
       </div>
     </div>
-  `;
+  `
 }
 
 export function generateFooterSection(event: H3Event, url: string): string {
@@ -149,5 +150,5 @@ export function generateFooterSection(event: H3Event, url: string): string {
       <div>${getTranslatedString(event, 'generated_by_wcag_checker')}</div>
       <div style="margin-top: 8px;">${url}</div>
     </div>
-  `;
+  `
 }

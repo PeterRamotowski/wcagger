@@ -1,13 +1,16 @@
 <script setup lang="ts">
-import { ExclamationTriangleIcon } from '@heroicons/vue/24/outline';
+import { ExclamationTriangleIcon } from '@heroicons/vue/24/outline'
 
 const {
   isLoading,
   loadingStep,
   results,
   error,
-  checkAccessibility
-} = useAccessibilityCheck();
+  checkAccessibility,
+  applyGroupingDecision,
+  isGrouping,
+  groupingError,
+} = useAccessibilityCheck()
 
 const {
   url,
@@ -16,40 +19,41 @@ const {
   wcagLevel,
   handleFormSubmit,
   exportReport,
-  handlePDFGeneration
-} = useAccessibilityForm();
+  handlePDFGeneration,
+} = useAccessibilityForm()
 
 useHead({
   title: $t('page_title'),
   meta: [
-    { name: 'description', content: $t('page_description') }
-  ]
-});
+    { name: 'description', content: $t('page_description') },
+  ],
+})
 
-const selectedError = ref<any>(null);
+interface SelectedError { violation: CombinedResultItem, node: ViolationNode, toolName: string }
+const selectedError = ref<SelectedError | null>(null)
 
 const onFormSubmit = () => {
-  handleFormSubmit((url, tools, standard, runners) => checkAccessibility(url, tools, standard, runners));
-};
+  handleFormSubmit((url, tools, standard, runners) => checkAccessibility(url, tools, standard, runners))
+}
 
 const onExportReport = (format: 'json' | 'csv') => {
-  exportReport(format, results.value);
-};
+  exportReport(format, results.value)
+}
 
 const onPDFGeneration = async () => {
   try {
-    await handlePDFGeneration(results.value);
-  } catch (error) {
-    alert($t('pdf_generation_error'));
+    await handlePDFGeneration(results.value)
+  } catch {
+    alert($t('pdf_generation_error'))
   }
-};
+}
 
 // Provide error selection method to child components
-const selectError = (errorData: any) => {
-  selectedError.value = errorData;
-};
+const selectError = (errorData: SelectedError) => {
+  selectedError.value = errorData
+}
 
-provide('selectError', selectError);
+provide('selectError', selectError)
 </script>
 
 <template>
@@ -62,8 +66,12 @@ provide('selectError', selectError);
               <span class="text-white font-bold text-lg">W</span>
             </div>
             <div>
-              <h1 class="text-xl font-bold text-gray-900">{{ $t('wcag_checker') }}</h1>
-              <p class="text-sm text-gray-600">{{ $t('accessibility_compliance_audit') }}</p>
+              <h1 class="text-xl font-bold text-gray-900">
+                {{ $t('wcag_checker') }}
+              </h1>
+              <p class="text-sm text-gray-600">
+                {{ $t('accessibility_compliance_audit') }}
+              </p>
             </div>
           </div>
           <LanguageSwitcher />
@@ -87,17 +95,20 @@ provide('selectError', selectError);
       />
 
       <!-- Results Section -->
-      <div v-if="results && !isLoading" class="mt-8">
+      <div
+        v-if="results && !isLoading"
+        class="mt-8"
+      >
         <ReportAccessibilitySummary :results="results" />
 
         <div class="space-y-8">
           <div class="bg-white rounded-xl shadow-sm border border-gray-200">
             <div class="px-6 py-4 border-b border-gray-200">
               <h3 class="text-lg font-semibold text-gray-900 flex items-center">
-                <span class="w-2 h-2 bg-purple-500 rounded-full mr-3"></span>
+                <span class="w-2 h-2 bg-purple-500 rounded-full mr-3" />
                 {{ $t('accessibility_results') }}
                 <span class="ml-2 text-sm text-gray-500 font-normal">
-                  ({{ selectedTools.map(tool => tool.charAt(0).toUpperCase() + tool.slice(1)).join(' + ') }})
+                  ({{ [...new Set(results.evidence.runs.map(run => run.tool))].map(tool => tool.charAt(0).toUpperCase() + tool.slice(1)).join(' + ') }})
                 </span>
               </h3>
               <p class="text-sm text-gray-600 mt-1">
@@ -105,7 +116,15 @@ provide('selectError', selectError);
               </p>
             </div>
             <div class="p-6">
+              <ReportGroupedAccessibility
+                v-if="results.evidence.grouping"
+                :results="results"
+                :busy="isGrouping"
+                :error="groupingError"
+                @decision="applyGroupingDecision"
+              />
               <ReportAccessibility
+                v-else
                 :violations="results.combined.violations"
                 :warnings="results.combined.warnings"
                 :passed="results.combined.passed"
@@ -121,13 +140,20 @@ provide('selectError', selectError);
       </div>
 
       <!-- Error Message -->
-      <div v-if="error && !isLoading" class="mb-8">
+      <div
+        v-if="error && !isLoading"
+        class="mb-8"
+      >
         <div class="bg-red-50 border border-red-200 rounded-xl p-6">
           <div class="flex items-center">
             <ExclamationTriangleIcon class="w-6 h-6 text-red-600 mr-3" />
             <div>
-              <h3 class="text-lg font-semibold text-red-800">{{ $t('error') }}</h3>
-              <p class="text-red-700">{{ error }}</p>
+              <h3 class="text-lg font-semibold text-red-800">
+                {{ $t('error') }}
+              </h3>
+              <p class="text-red-700">
+                {{ error }}
+              </p>
             </div>
           </div>
         </div>
@@ -144,7 +170,7 @@ provide('selectError', selectError);
 
     <ReportErrorDetailModal
       :is-open="selectedError !== null"
-      :error="selectedError"
+      :error="selectedError || undefined"
       @close="selectedError = null"
     />
   </div>

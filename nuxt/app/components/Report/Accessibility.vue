@@ -2,29 +2,29 @@
 import {
   ExclamationTriangleIcon,
   ExclamationCircleIcon,
-  CheckCircleIcon
-} from '@heroicons/vue/24/outline';
+  CheckCircleIcon,
+} from '@heroicons/vue/24/outline'
 
-type SectionKey = 'violations' | 'warnings' | 'passed';
+type SectionKey = 'violations' | 'warnings' | 'passed'
 
 const props = defineProps<{
-  violations: CombinedResultItem[]
-  warnings: CombinedResultItem[]
-  passed: CombinedResultItem[]
+  violations: readonly CombinedResultItem[]
+  warnings: readonly CombinedResultItem[]
+  passed: readonly CombinedResultItem[]
 }>()
 
-const selectError = inject<(error: { violation: CombinedResultItem; node: ViolationNode; toolName: string }) => void>('selectError')
+const selectError = inject<(error: { violation: CombinedResultItem, node: ViolationNode, toolName: string }) => void>('selectError')
 
 const expandedSections = ref<Record<SectionKey, boolean>>({
   violations: true,
   warnings: false,
-  passed: false
+  passed: false,
 })
 
 const isEmpty = computed(() => {
-  return !props.violations?.length &&
-         !props.warnings?.length &&
-         !props.passed?.length
+  return !props.violations?.length
+    && !props.warnings?.length
+    && !props.passed?.length
 })
 
 const toggleSection = (section: SectionKey) => {
@@ -36,7 +36,7 @@ const showErrorDetails = (violation: CombinedResultItem, node: ViolationNode) =>
     selectError({
       violation,
       node,
-      toolName: violation.source
+      toolName: violation.source,
     })
   }
 }
@@ -47,7 +47,7 @@ const showErrorDetails = (violation: CombinedResultItem, node: ViolationNode) =>
     <!-- Violations Section -->
     <ReportAccessibilitySection
       v-if="violations && violations.length > 0"
-  :title="$t('violations')"
+      :title="$t('violations')"
       :count="violations.length"
       :expanded="expandedSections.violations"
       :icon="ExclamationTriangleIcon"
@@ -69,7 +69,7 @@ const showErrorDetails = (violation: CombinedResultItem, node: ViolationNode) =>
     <!-- Warnings Section -->
     <ReportAccessibilitySection
       v-if="warnings && warnings.length > 0"
-  :title="$t('warnings')"
+      :title="$t('warnings')"
       :count="warnings.length"
       :expanded="expandedSections.warnings"
       :icon="ExclamationCircleIcon"
@@ -91,7 +91,7 @@ const showErrorDetails = (violation: CombinedResultItem, node: ViolationNode) =>
     <!-- Passed Tests Section -->
     <ReportAccessibilitySection
       v-if="passed && passed.length > 0"
-  :title="$t('passed_tests')"
+      :title="$t('passed_tests')"
       :count="passed.length"
       :expanded="expandedSections.passed"
       :icon="CheckCircleIcon"
