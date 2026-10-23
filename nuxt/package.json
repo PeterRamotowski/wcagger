@@ -10,7 +10,8 @@
     "dev": "nuxt dev --no-fork --clipboard --no-clear",
     "generate": "nuxt generate",
     "preview": "nuxt preview",
-    "postinstall": "nuxt prepare"
+    "postinstall": "nuxt prepare",
+    "test": "vitest run"
   },
   "dependencies": {
     "@axe-core/puppeteer": "^4.10.2",
@@ -33,5 +34,8 @@
     "validator": "^13.15.15",
     "vue": "latest",
     "vue-router": "latest"
+  },
+  "devDependencies": {
+    "vitest": "^5.0.5"
   }
 }
