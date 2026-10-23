@@ -10,28 +10,18 @@ export class Pa11yAnalysisService {
   }
 
   async analyze(url: string, standard: string, runners: string[] = ['htmlcs', 'axe']): Promise<Pa11yProcessedResults> {
-    try {
-      // Configure Pa11y with selected runners
-      const pa11yResults = await pa11y(url, {
-        standard: getPa11yStandard(standard) as any,
-        runners,
-        browser: this.browser,
-        timeout: 20000,
-        wait: 2000,
-        includeNotices: true,
-        includeWarnings: true
-      });
-      
-      return this.processResults(pa11yResults);
-      
-    } catch (error) {
-      console.error('Pa11y analysis error:', error);
-      return {
-        errors: [],
-        warnings: [],
-        notices: []
-      };
-    }
+    // Let scan failures reach the API error handler instead of returning empty results.
+    const pa11yResults = await pa11y(url, {
+      standard: getPa11yStandard(standard) as any,
+      runners,
+      browser: this.browser,
+      timeout: 20000,
+      wait: 2000,
+      includeNotices: true,
+      includeWarnings: true
+    });
+
+    return this.processResults(pa11yResults);
   }
 
   private processResults(pa11yResults: any): Pa11yProcessedResults {
