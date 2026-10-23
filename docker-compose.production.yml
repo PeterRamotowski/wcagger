@@ -1,0 +1,16 @@
+services:
+  wcagger:
+    container_name: wcagger
+    build:
+      context: .
+      dockerfile: ./config/Dockerfile.production
+    restart: always
+    hostname: client
+    ports:
+      - "1270:3000"
+    networks:
+      - wcagger
+
+networks:
+  wcagger:
+    name: wcagger

@@ -1,0 +1,11 @@
+.git
+.gitignore
+
+nuxt/node_modules
+nuxt/.nuxt
+nuxt/.output
+nuxt/.nitro
+nuxt/.cache
+nuxt/.data
+
+node_modules
