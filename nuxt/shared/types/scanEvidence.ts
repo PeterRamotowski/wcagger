@@ -18,6 +18,7 @@ export interface EngineRun {
   engine: ScanEngine
   runner?: string
   engineVersion?: string
+  capture?: { documentId: string, fingerprint?: string, stable: boolean }
   status: 'completed'
   startedAt: string
   completedAt: string
@@ -26,6 +27,8 @@ export interface EngineRun {
   standard: string
   configuration: {
     standard?: string
+    viewport?: { width: number, height: number }
+    userAgent?: string
     tags?: string[]
     runners?: string[]
     timeout?: number
@@ -38,6 +41,8 @@ export interface ElementReference {
   documentId: string
   locator: { kind: 'axe-target', target: UnlabelledFrameSelector } | { kind: 'css-selector', selector: string }
   html?: string
+  // Populated only after resolving the locator in the actual browser document.
+  identity?: { documentId: string, elementId: string, signature: string }
 }
 
 export interface Pa11yIssue {
@@ -80,7 +85,6 @@ export interface ScanObservation {
   evidence: ObservationEvidence
 }
 
-// Step 2 will populate these records after conservative matching.
 export interface FindingOccurrence {
   id: string
   findingId: string
@@ -88,6 +92,8 @@ export interface FindingOccurrence {
   stateId: string
   element?: ElementReference
   observationIds: string[]
+  issueType: string
+  outcome: ObservationOutcome
 }
 
 export interface AccessibilityFinding {
@@ -95,6 +101,7 @@ export interface AccessibilityFinding {
   issueType: string
   title: string
   occurrenceIds: string[]
+  outcome: ObservationOutcome
 }
 
 export interface EngineEvidence {
@@ -104,7 +111,48 @@ export interface EngineEvidence {
 
 export interface ScanEvidence {
   schemaVersion: 1
+  grouping?: EvidenceGrouping
   sample: ScanSample
   runs: EngineRun[]
   observations: ScanObservation[]
+}
+
+export interface FindingGroupingDecision {
+  id: string
+  action: 'combine' | 'separate'
+  occurrenceIds: string[]
+  reviewer: string
+  timestamp: string
+  reason: string
+}
+
+export interface GroupingReview {
+  id: string
+  observationIds: string[]
+  reason: 'unverified-element' | 'different-state' | 'conflicting-outcomes' | 'possible-shared-problem'
+}
+
+export interface ElementFindingGroup {
+  id: string
+  sampleId: string
+  stateId: string
+  occurrenceIds: string[]
+  findingIds: string[]
+}
+
+export interface EvidenceGrouping {
+  findings: AccessibilityFinding[]
+  occurrences: FindingOccurrence[]
+  elements: ElementFindingGroup[]
+  reviews: GroupingReview[]
+  decisions: FindingGroupingDecision[]
+  summary: {
+    rawObservations: number
+    actionableObservations: number
+    uniqueFindings: number
+    observedOccurrences: number
+    affectedElements: number
+    unresolvedElementOccurrences: number
+    affectedSamples: number
+  }
 }

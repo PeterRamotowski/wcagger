@@ -1,3 +1,7 @@
+import { configurePage, defaultBrowserConfig } from '~~/server/utils/browserConfig'
+import { randomUUID } from 'node:crypto'
+import { attachDocumentIdentity, captureDocument } from '~~/server/services/documentIdentityService'
+import type { ScanPageContext } from '~~/server/services/documentIdentityService'
 import { createPa11yEvidence } from '~~/server/services/scanEvidenceService'
 import type { Pa11yProcessedResults } from '~~/shared/types/accessibility'
 import type { Pa11yIssue, Pa11yScanResults } from '~~/shared/types/scanEvidence'
@@ -12,24 +16,38 @@ export class Pa11yAnalysisService {
     this.browser = browser
   }
 
-  async analyze(url: string, standard: string, runners: string[] = ['htmlcs', 'axe']): Promise<Pa11yProcessedResults> {
+  async analyze(url: string, standard: string, runners: string[] = ['htmlcs', 'axe'], context?: ScanPageContext): Promise<Pa11yProcessedResults> {
     const startedAt = new Date().toISOString()
-    // Let scan failures reach the API error handler instead of returning empty results.
-    const pa11yResults = await pa11y(url, {
-      standard: getPa11yStandard(standard),
-      runners,
-      browser: this.browser,
-      timeout: 20000,
-      wait: 2000,
-      includeNotices: true,
-      includeWarnings: true,
-    })
+    const page = context?.page ?? await this.browser.newPage()
+    const documentContext = context ?? { page, documentId: randomUUID() }
+    try {
+      if (!context) {
+        await configurePage(page)
+        await page.goto(url, { waitUntil: 'networkidle2', timeout: defaultBrowserConfig.timeout })
+      }
+      const before = await captureDocument(documentContext)
+      // Let scan failures reach the API error handler instead of returning empty results.
+      const pa11yResults = await pa11y(url, {
+        standard: getPa11yStandard(standard),
+        runners,
+        browser: this.browser,
+        page,
+        ignoreUrl: true,
+        viewport: defaultBrowserConfig.viewport,
+        timeout: 20000,
+        wait: 2000,
+        includeNotices: true,
+        includeWarnings: true,
+      })
 
-    return {
-      ...this.processResults(pa11yResults),
-      evidence: createPa11yEvidence(pa11yResults, {
-        url, standard, startedAt, completedAt: new Date().toISOString(),
-      }, runners),
+      return {
+        ...this.processResults(pa11yResults),
+        evidence: await attachDocumentIdentity(createPa11yEvidence(pa11yResults, {
+          url, standard, startedAt, completedAt: new Date().toISOString(),
+        }, runners), documentContext, before),
+      }
+    } finally {
+      if (!context) await page.close()
     }
   }
 

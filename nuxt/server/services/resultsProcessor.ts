@@ -1,3 +1,4 @@
+import { groupScanEvidence } from '~~/server/services/findingGroupingService'
 import { randomUUID } from 'node:crypto'
 import type { EngineEvidence, ScanEvidence } from '~~/shared/types/scanEvidence'
 import type {
@@ -112,6 +113,7 @@ export class ResultsProcessor {
   finalizeResults(results: AccessibilityCheckResults): AccessibilityCheckResults {
     return {
       ...results,
+      evidence: { ...results.evidence, grouping: groupScanEvidence(results.evidence, results.evidence.grouping?.decisions) },
       summary: {
         totalViolations: results.combined.violations.length,
         totalWarnings: results.combined.warnings.length,

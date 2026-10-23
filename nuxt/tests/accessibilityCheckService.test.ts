@@ -54,6 +54,14 @@ describe('scan orchestration and compatibility', () => {
     expect(page.close).toHaveBeenCalledOnce()
   })
 
+  it('keeps one prepared page and preserves the Pa11y-only navigation policy', async () => {
+    const { service, browser, page } = setup()
+    await service.run({ ...request, tools: ['pa11y'] })
+    expect(browser.newPage).toHaveBeenCalledOnce()
+    expect(page.goto).toHaveBeenCalledWith(request.url, expect.objectContaining({ waitUntil: 'networkidle2' }))
+    expect(pa11y).toHaveBeenCalledWith(request.url, expect.objectContaining({ page, ignoreUrl: true }))
+  })
+
   it('keeps separate executions and their sample/state identities independent', async () => {
     const { service } = setup()
     const first = await service.run(request)

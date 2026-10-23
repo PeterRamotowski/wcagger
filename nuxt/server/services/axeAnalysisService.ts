@@ -1,3 +1,6 @@
+import { randomUUID } from 'node:crypto'
+import { attachDocumentIdentity, captureDocument } from '~~/server/services/documentIdentityService'
+import type { ScanPageContext } from '~~/server/services/documentIdentityService'
 import { createAxeEvidence } from '~~/server/services/scanEvidenceService'
 import type { AxeProcessedResults } from '~~/shared/types/accessibility'
 import { AxePuppeteer } from '@axe-core/puppeteer'
@@ -13,17 +16,17 @@ export class AxeAnalysisService {
     this.browser = browser
   }
 
-  async analyze(url: string, standard: string): Promise<AxeProcessedResults> {
+  async analyze(url: string, standard: string, context?: ScanPageContext): Promise<AxeProcessedResults> {
     const startedAt = new Date().toISOString()
-    const page = await this.browser.newPage()
+    const page = context?.page ?? await this.browser.newPage()
+    const documentContext = context ?? { page, documentId: randomUUID() }
 
     try {
-      await configurePage(page)
-
-      await page.goto(url, {
-        waitUntil: 'networkidle0',
-        timeout: defaultBrowserConfig.timeout,
-      })
+      if (!context) {
+        await configurePage(page)
+        await page.goto(url, { waitUntil: 'networkidle0', timeout: defaultBrowserConfig.timeout })
+      }
+      const before = await captureDocument(documentContext)
 
       const axe = new AxePuppeteer(page)
       const axeResults: AxeResults = await axe
@@ -32,12 +35,12 @@ export class AxeAnalysisService {
 
       return {
         ...this.processResults(axeResults),
-        evidence: createAxeEvidence(axeResults, {
+        evidence: await attachDocumentIdentity(createAxeEvidence(axeResults, {
           url, standard, startedAt, completedAt: new Date().toISOString(),
-        }, getAxeTags(standard), defaultBrowserConfig.timeout),
+        }, getAxeTags(standard), defaultBrowserConfig.timeout), documentContext, before),
       }
     } finally {
-      await page.close()
+      if (!context) await page.close()
     }
   }
 
