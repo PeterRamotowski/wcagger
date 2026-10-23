@@ -36,6 +36,7 @@ export function buildGroupedReport(results: DeepReadonly<AccessibilityCheckResul
   const evidence = results.evidence
   const grouping = evidence.grouping
   if (!grouping) throw new Error('Grouped evidence is unavailable; run the scan again')
+  const samples = new Map((evidence.samples ?? [evidence.sample]).map(sample => [sample.id, sample]))
   const runs = new Map(evidence.runs.map(run => [run.id, run]))
   const originals = new Map(evidence.observations.map(item => [item.id, item]))
   const observations = new Map(evidence.observations.map((item) => {
@@ -54,7 +55,8 @@ export function buildGroupedReport(results: DeepReadonly<AccessibilityCheckResul
     const run = runs.get(items[0]!.runId)!
     const presented: ReportOccurrence = {
       id: item.id, sampleId: item.sampleId, stateId: item.stateId,
-      url: run.resolvedUrl, state: item.sampleId === evidence.sample.id && item.stateId === evidence.sample.state.id ? evidence.sample.state.description : item.stateId,
+      url: run.resolvedUrl, sampleName: evidence.evaluation?.samples.find(sample => sample.id === item.sampleId)?.name,
+      state: samples.get(item.sampleId)?.state.id === item.stateId ? samples.get(item.sampleId)!.state.description : item.stateId,
       selector: formatLocator(item.element), observations: [...items].sort((a, b) => a.source.localeCompare(b.source)),
     }
     return [item.id, presented] as const
@@ -78,7 +80,7 @@ export function buildGroupedReport(results: DeepReadonly<AccessibilityCheckResul
   const groups = new Map<string, ReportGroup>()
   for (const occurrence of occurrences.values()) {
     const key = occurrence.sampleId + ':' + occurrence.stateId
-    const group = groups.get(key) ?? { id: key, label: occurrence.url + ' (' + occurrence.state + ')', findingIds: [], occurrenceIds: [] }
+    const group = groups.get(key) ?? { id: key, label: (occurrence.sampleName ? occurrence.sampleName + ' · ' : '') + occurrence.url + ' (' + occurrence.state + ')', findingIds: [], occurrenceIds: [] }
     group.occurrenceIds.push(occurrence.id)
     const findingId = occurrenceFinding.get(occurrence.id)!
     if (!group.findingIds.includes(findingId)) group.findingIds.push(findingId)
@@ -93,6 +95,7 @@ export function buildGroupedReport(results: DeepReadonly<AccessibilityCheckResul
   if (unlocated.length) elements.push({ id: 'unresolved-elements', label: '', findingIds: [...new Set(unlocated.map(item => occurrenceFinding.get(item.id)!))], occurrenceIds: unlocated.map(item => item.id) })
   const byFinding = new Map(grouping.findings.map(item => [item.id, item]))
   return {
+    evaluation: evidence.evaluation,
     url: results.url, timestamp: results.timestamp,
     standards: [...new Set(evidence.runs.map(run => run.standard))], tools: [...new Set(evidence.runs.map(run => run.tool))],
     summary: { ...grouping.summary }, findings, elements, pages: [...groups.values()], runs: [...evidence.runs], decisions: grouping.decisions,

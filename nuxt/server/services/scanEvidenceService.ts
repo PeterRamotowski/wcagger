@@ -97,7 +97,7 @@ export function createPa11yEvidence(results: Pa11yScanResults, context: RunConte
         ? {
             documentId: run.id,
             locator: { kind: 'css-selector', selector: issue.selector },
-            html: issue.context,
+            html: issue.context ?? undefined,
           }
         : undefined,
       evidence: { kind: 'pa11y', issue },

@@ -10,6 +10,8 @@ const {
   applyGroupingDecision,
   isGrouping,
   groupingError,
+  setResults,
+  resetTest,
 } = useAccessibilityCheck()
 
 const {
@@ -21,6 +23,16 @@ const {
   exportReport,
   handlePDFGeneration,
 } = useAccessibilityForm()
+
+const mode = ref('quick')
+const { evaluation, scans, busySampleId, busy: evaluationBusy, error: evaluationError, sampleErrors, currentScan, scanSample, buildReport } = useEvaluation()
+const sampleStatuses = computed(() => Object.fromEntries(evaluation.value.samples.map(sample => [sample.id, busySampleId.value === sample.id ? 'scanning' : currentScan(sample, selectedTools.value, selectedRunners.value) ? 'scanned' : scans.value[sample.id] ? 'stale' : sample.preparation === 'manual' ? 'manual' : 'unscanned'])))
+const canBuildEvaluation = computed(() => Object.values(sampleStatuses.value).includes('scanned'))
+const buildEvaluationReport = async () => {
+  const report = await buildReport(selectedTools.value, selectedRunners.value, results.value)
+  if (report) setResults(report)
+}
+watch(mode, () => resetTest())
 
 useHead({
   title: $t('page_title'),
@@ -80,7 +92,49 @@ provide('selectError', selectError)
     </header>
 
     <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <fieldset
+        class="mb-5 flex flex-wrap gap-4"
+        :disabled="isLoading || evaluationBusy || isGrouping"
+      >
+        <legend class="sr-only">
+          {{ $t('eval_mode') }}
+        </legend>
+        <label class="flex items-center gap-2"><input
+          v-model="mode"
+          type="radio"
+          value="quick"
+        >{{ $t('eval_quick') }}</label>
+        <label class="flex items-center gap-2"><input
+          v-model="mode"
+          type="radio"
+          value="evaluation"
+        >{{ $t('eval_title') }}</label>
+      </fieldset>
+      <EvaluationSampleEditor
+        v-if="mode === 'evaluation'"
+        v-model="evaluation"
+        :busy="evaluationBusy || isGrouping"
+        :busy-sample-id="busySampleId"
+        :statuses="sampleStatuses"
+        :sample-errors="sampleErrors"
+        :error="evaluationError"
+        :can-build="canBuildEvaluation"
+        @scan="scanSample($event, selectedTools, selectedRunners)"
+        @build="buildEvaluationReport"
+      >
+        <FormToolSelector
+          v-model="selectedTools"
+          :selected-runners="selectedRunners"
+          :disabled="evaluationBusy || isGrouping"
+          @update:selected-runners="selectedRunners = $event"
+        />
+        <FormWcagLevelSelector
+          v-model="evaluation.targetStandard"
+          :disabled="evaluationBusy || isGrouping"
+        />
+      </EvaluationSampleEditor>
       <FormAccessibilityCheck
+        v-else
         v-model:url="url"
         v-model:selected-tools="selectedTools"
         v-model:selected-runners="selectedRunners"
@@ -99,6 +153,10 @@ provide('selectError', selectError)
         v-if="results && !isLoading"
         class="mt-8"
       >
+        <EvaluationReportScope
+          v-if="results.evidence.evaluation"
+          :results="results"
+        />
         <ReportAccessibilitySummary :results="results" />
 
         <div class="space-y-8">

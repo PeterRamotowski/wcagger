@@ -46,11 +46,11 @@ watch(() => props.results.evidence.grouping, () => {
     <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
       <label class="text-sm font-medium">{{ $t('group_view') }}<select
         v-model="view"
-        class="mt-1 block w-full rounded border-gray-300"
+        class="mt-1 block w-full rounded border border-gray-300 px-3 py-2"
       ><option value="findings">{{ $t('group_by_problem') }}</option><option value="elements">{{ $t('group_by_element') }}</option><option value="pages">{{ $t('group_by_page') }}</option></select></label>
       <label class="text-sm font-medium">{{ $t('group_outcome') }}<select
         v-model="outcome"
-        class="mt-1 block w-full rounded border-gray-300"
+        class="mt-1 block w-full rounded border border-gray-300 px-3 py-2"
       ><option value="">{{ $t('group_all') }}</option><option
         v-for="value in ['violation', 'incomplete', 'warning', 'notice', 'unknown']"
         :key="value"
@@ -58,21 +58,21 @@ watch(() => props.results.evidence.grouping, () => {
       >{{ $t('group_outcome_' + value) }}</option></select></label>
       <label class="text-sm font-medium">{{ $t('group_source') }}<select
         v-model="source"
-        class="mt-1 block w-full rounded border-gray-300"
+        class="mt-1 block w-full rounded border border-gray-300 px-3 py-2"
       ><option value="">{{ $t('group_all') }}</option><option
         v-for="value in sources"
         :key="value"
       >{{ value }}</option></select></label>
       <label class="text-sm font-medium">{{ $t('group_criterion') }}<select
         v-model="criterion"
-        class="mt-1 block w-full rounded border-gray-300"
+        class="mt-1 block w-full rounded border border-gray-300 px-3 py-2"
       ><option value="">{{ $t('group_all') }}</option><option
         v-for="value in criteria"
         :key="value"
       >{{ value }}</option></select></label>
       <label class="text-sm font-medium">{{ $t('group_issue_type') }}<select
         v-model="issueType"
-        class="mt-1 block w-full rounded border-gray-300"
+        class="mt-1 block w-full rounded border border-gray-300 px-3 py-2"
       ><option value="">{{ $t('group_all') }}</option><option
         v-for="value in issueTypes"
         :key="value"
@@ -97,17 +97,17 @@ watch(() => props.results.evidence.grouping, () => {
       </p>
       <fieldset
         :disabled="busy"
-        class="mt-3 space-y-3"
+        class="mt-3 min-w-0 space-y-3 [overflow-wrap:anywhere]"
       >
         <label class="block text-sm font-medium">{{ $t('group_reviewer') }}<input
           v-model="reviewer"
           type="text"
-          class="mt-1 block w-full rounded border-gray-300"
+          class="mt-1 block w-full rounded border border-gray-300 px-3 py-2"
           maxlength="200"
         ></label>
         <label class="block text-sm font-medium">{{ $t('group_reason') }}<textarea
           v-model="reason"
-          class="mt-1 block w-full rounded border-gray-300"
+          class="mt-1 block w-full rounded border border-gray-300 px-3 py-2"
           rows="2"
           maxlength="2000"
         /></label>

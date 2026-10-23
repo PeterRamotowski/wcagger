@@ -1,3 +1,4 @@
+import type { EvaluationSnapshot } from './evaluation'
 import type { DeepReadonly } from 'vue'
 import type { EngineRun, EvidenceGrouping, ObservationOutcome } from './scanEvidence'
 
@@ -22,6 +23,7 @@ export interface ReportOccurrence {
   sampleId: string
   stateId: string
   url: string
+  sampleName?: string
   state: string
   selector: string
   observations: ReportObservation[]
@@ -53,6 +55,7 @@ export interface ReportReview {
   resolved: boolean
 }
 export interface GroupedReport {
+  evaluation?: DeepReadonly<EvaluationSnapshot>
   url: string
   timestamp: string
   standards: string[]

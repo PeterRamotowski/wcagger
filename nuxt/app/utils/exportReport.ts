@@ -14,7 +14,8 @@ export function generateJSONContent(data: ExportData): string {
 export function generateCSVContent(data: ExportData): string {
   const rows: string[][] = [['Record type', 'Finding ID', 'Occurrence ID', 'Observation ID', 'Title', 'Outcome', 'Issue type', 'WCAG criteria', 'Sample ID', 'State ID', 'URL', 'Selector', 'Source', 'Engine', 'Rule', 'Scan timestamp', 'Details']]
   const add = (values: string[]) => rows.push(values)
-  add(['metadata', '', '', '', '', '', '', '', '', '', data.url, '', '', '', '', data.timestamp, JSON.stringify({ schemaVersion: data.schemaVersion, summary: data.summary, standards: data.standards, runs: data.report.runs })])
+  add(['metadata', '', '', '', '', '', '', '', '', '', data.url, '', '', '', '', data.timestamp, JSON.stringify({ schemaVersion: data.schemaVersion, summary: data.summary, standards: data.standards, runs: data.report.runs, evaluation: data.report.evaluation })])
+  for (const sample of data.report.evaluation?.samples ?? []) add(['sample', '', '', '', sample.name, data.report.evaluation!.scannedSampleIds.includes(sample.id) ? 'scanned' : 'unscanned', '', '', sample.id, sample.state.id, sample.url, '', '', '', '', data.timestamp, JSON.stringify(sample)])
   const occurrenceOf = new Map<string, { findingId: string, occurrenceId: string, sampleId: string, stateId: string }>()
   for (const finding of data.report.findings) {
     add(['finding', finding.id, '', '', finding.title, finding.outcome, finding.issueType, finding.criteria.join('; '), '', '', '', '', finding.sources.join('; '), finding.engines.join('; '), '', data.timestamp, JSON.stringify({ occurrences: finding.occurrences.length, affectedSamples: finding.affectedSamples })])

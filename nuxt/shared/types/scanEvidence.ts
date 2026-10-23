@@ -1,3 +1,4 @@
+import type { EvaluationSnapshot } from './evaluation'
 import type { ImpactValue, Result, UnlabelledFrameSelector } from 'axe-core'
 
 export type ScanTool = 'axe' | 'pa11y'
@@ -50,7 +51,7 @@ export interface Pa11yIssue {
   type: string
   typeCode: number
   message: string
-  context: string
+  context?: string | null
   selector: string
   runner?: string
   runnerExtras?: Record<string, unknown>
@@ -133,6 +134,8 @@ export interface ScanEvidence {
   schemaVersion: 1
   grouping?: EvidenceGrouping
   sample: ScanSample
+  samples?: ScanSample[]
+  evaluation?: EvaluationSnapshot
   runs: EngineRun[]
   observations: ScanObservation[]
 }

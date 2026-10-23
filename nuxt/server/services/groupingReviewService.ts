@@ -23,9 +23,9 @@ function validElement(value: unknown): boolean {
   return value.identity === undefined || hasStrings(value.identity, ['documentId', 'elementId', 'signature'])
 }
 
-export function reviewGrouping(input: unknown): EvidenceGrouping {
-  if (!record(input) || !record(input.evidence) || !validDecision(input.decision)) throw new Error('Invalid grouping request')
-  const evidence = input.evidence
+export function validateScanEvidence(value: unknown): ScanEvidence {
+  if (!record(value)) throw new Error('Invalid scan evidence')
+  const evidence = value
   const sample = evidence.sample
   if (evidence.schemaVersion !== 1 || !record(sample) || !hasStrings(sample, ['id', 'url']) || !hasStrings(sample.state, ['id', 'description'])) throw new Error('Invalid sample metadata')
   if (!Array.isArray(evidence.runs) || !Array.isArray(evidence.observations) || evidence.runs.length > 1000 || evidence.observations.length > 20000) throw new Error('Invalid or oversized evidence')
@@ -35,9 +35,15 @@ export function reviewGrouping(input: unknown): EvidenceGrouping {
   }
   for (const item of evidence.observations) {
     if (!record(item) || !['id', 'runId', 'ruleId', 'title'].every(key => typeof item[key] === 'string') || !['violation', 'incomplete', 'warning', 'notice', 'pass', 'inapplicable', 'unknown'].includes(String(item.outcome)) || !strings(item.tags) || !validElement(item.element) || !record(item.evidence)) throw new Error('Invalid observation')
-    if (item.evidence.kind === 'pa11y' ? !record(item.evidence.issue) || typeof item.evidence.issue.context !== 'string' : item.evidence.kind !== 'axe' || !record(item.evidence.rule)) throw new Error('Invalid source evidence')
+    if (item.evidence.kind === 'pa11y' ? !record(item.evidence.issue) || (item.evidence.issue.context != null && typeof item.evidence.issue.context !== 'string') : item.evidence.kind !== 'axe' || !record(item.evidence.rule)) throw new Error('Invalid source evidence')
   }
   const history = record(evidence.grouping) ? evidence.grouping.decisions : []
   if (!Array.isArray(history) || history.length > 1000 || !history.every(validDecision)) throw new Error('Invalid review history')
-  return groupScanEvidence(evidence as unknown as ScanEvidence, [...history, input.decision])
+  return evidence as unknown as ScanEvidence
+}
+
+export function reviewGrouping(input: unknown): EvidenceGrouping {
+  if (!record(input) || !validDecision(input.decision)) throw new Error('Invalid grouping request')
+  const evidence = validateScanEvidence(input.evidence)
+  return groupScanEvidence(evidence, [...(evidence.grouping?.decisions ?? []), input.decision])
 }

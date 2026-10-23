@@ -86,6 +86,11 @@ export const useAccessibilityCheck = () => {
     isGrouping: readonly(isGrouping),
     groupingError: readonly(groupingError),
     applyGroupingDecision,
+    setResults: (value: AccessibilityCheckResults) => {
+      results.value = value
+      error.value = null
+      groupingError.value = null
+    },
     checkAccessibility,
     resetTest,
   }

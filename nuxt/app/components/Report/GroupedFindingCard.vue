@@ -61,6 +61,12 @@ const original = (id: string) => JSON.stringify(props.evidence.observations.find
               :key="occurrence.id"
               class="rounded border border-gray-200 bg-white p-3"
             >
+              <p
+                v-if="occurrence.sampleName"
+                class="mb-1 text-sm font-semibold"
+              >
+                {{ occurrence.sampleName }}
+              </p>
               <p class="break-all text-sm">
                 <a
                   v-if="safeReportLink(occurrence.url)"
@@ -88,7 +94,7 @@ const original = (id: string) => JSON.stringify(props.evidence.observations.find
                 :key="observation.id"
                 class="mt-3 border-t border-gray-200 pt-2"
               >
-                <summary class="cursor-pointer text-sm font-medium">
+                <summary class="cursor-pointer text-sm font-medium [overflow-wrap:anywhere]">
                   {{ observation.source }} · {{ observation.ruleId }} · {{ $t('group_outcome_' + observation.outcome) }}
                 </summary>
                 <div class="mt-2 space-y-2 text-sm">

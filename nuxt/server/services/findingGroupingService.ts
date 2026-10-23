@@ -14,8 +14,8 @@ function issueType(observation: ScanObservation, run: EngineRun): string {
   if (run.engine === 'htmlcs'
     && /^WCAG2(?:A|AA|AAA)\.Principle1\.Guideline1_1\.1_1_1\.H37$/.test(observation.ruleId)
     && observation.evidence.kind === 'pa11y'
-    && /^<img\b/i.test(observation.evidence.issue.context)
-    && !/\s(?:alt|aria-label|aria-labelledby)\s*=/i.test(observation.evidence.issue.context)) return 'axe:image-alt'
+    && /^<img\b/i.test(observation.evidence.issue.context ?? '')
+    && !/\s(?:alt|aria-label|aria-labelledby)\s*=/i.test(observation.evidence.issue.context ?? '')) return 'axe:image-alt'
   return [run.engine === 'unknown' ? run.runner ?? run.tool : run.engine, observation.ruleId].join(':')
 }
 

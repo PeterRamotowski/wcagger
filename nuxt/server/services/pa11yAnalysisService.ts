@@ -64,7 +64,7 @@ export class Pa11yAnalysisService {
         type: issue.type,
         title: issue.message,
         description: undefined, // Pa11y doesn't provide additional description
-        context: issue.context,
+        context: issue.context ?? undefined,
         selector: issue.selector,
         runner: issue.runner,
         runnerExtras: issue.runnerExtras,
