@@ -1,3 +1,5 @@
+import type { EngineEvidence, ScanEvidence } from './scanEvidence'
+
 export interface ViolationNode {
   target?: string | string[];
   html?: string;
@@ -30,14 +32,16 @@ export interface WcagStandard {
 
 // Tool-specific processed results (server-side only)
 export interface AxeProcessedResults {
-  violations: any[];
-  incomplete: any[];
-  passes: any[];
+  violations: Omit<CombinedResultItem, 'source'>[];
+  incomplete: Omit<CombinedResultItem, 'source'>[];
+  passes: Omit<CombinedResultItem, 'source'>[];
+  evidence: EngineEvidence;
 }
 export interface Pa11yProcessedResults {
-  errors: any[];
-  warnings: any[];
-  notices: any[];
+  errors: Omit<CombinedResultItem, 'source'>[];
+  warnings: Omit<CombinedResultItem, 'source'>[];
+  notices: Omit<CombinedResultItem, 'source'>[];
+  evidence: EngineEvidence;
 }
 
 export interface CombinedResultItem {
@@ -52,6 +56,8 @@ export interface CombinedResultItem {
   tags?: readonly string[];
   source: 'axe' | 'pa11y';
   runner?: string; // Pa11y runner
+  type?: string;
+  runnerExtras?: Record<string, unknown>;
 }
 
 export interface CombinedResults {
@@ -61,6 +67,7 @@ export interface CombinedResults {
 }
 
 export interface AccessibilityCheckResults {
+  evidence: ScanEvidence;
   url: string;
   timestamp: string;
   summary: {

@@ -1,44 +1,51 @@
-import { AxePuppeteer } from '@axe-core/puppeteer';
-import type { Browser } from 'puppeteer';
-import type { AxeResults } from 'axe-core';
-import { getAxeTags } from '~~/server/utils/wcagMapping';
-import { configurePage, defaultBrowserConfig } from '~~/server/utils/browserConfig';
+import { createAxeEvidence } from '~~/server/services/scanEvidenceService'
+import type { AxeProcessedResults } from '~~/shared/types/accessibility'
+import { AxePuppeteer } from '@axe-core/puppeteer'
+import type { Browser } from 'puppeteer'
+import type { AxeResults } from 'axe-core'
+import { getAxeTags } from '~~/server/utils/wcagMapping'
+import { configurePage, defaultBrowserConfig } from '~~/server/utils/browserConfig'
 
 export class AxeAnalysisService {
-  private browser: Browser;
+  private browser: Browser
 
   constructor(browser: Browser) {
-    this.browser = browser;
+    this.browser = browser
   }
 
   async analyze(url: string, standard: string): Promise<AxeProcessedResults> {
-    const page = await this.browser.newPage();
+    const startedAt = new Date().toISOString()
+    const page = await this.browser.newPage()
 
     try {
-      await configurePage(page);
+      await configurePage(page)
 
       await page.goto(url, {
         waitUntil: 'networkidle0',
-        timeout: defaultBrowserConfig.timeout
-      });
+        timeout: defaultBrowserConfig.timeout,
+      })
 
-      const axe = new AxePuppeteer(page);
+      const axe = new AxePuppeteer(page)
       const axeResults: AxeResults = await axe
         .withTags(getAxeTags(standard))
-        .analyze();
+        .analyze()
 
-      return this.processResults(axeResults);
-    }
-    finally {
-      await page.close();
+      return {
+        ...this.processResults(axeResults),
+        evidence: createAxeEvidence(axeResults, {
+          url, standard, startedAt, completedAt: new Date().toISOString(),
+        }, getAxeTags(standard), defaultBrowserConfig.timeout),
+      }
+    } finally {
+      await page.close()
     }
   }
 
-  private processResults(axeResults: AxeResults): AxeProcessedResults {
+  private processResults(axeResults: AxeResults): Omit<AxeProcessedResults, 'evidence'> {
     return {
       violations: axeResults.violations.map(violation => ({
         code: violation.id,
-        impact: violation.impact,
+        impact: violation.impact ?? undefined,
         title: violation.help || violation.description,
         description: violation.help && violation.description && violation.help !== violation.description ? violation.description : undefined,
         helpUrl: violation.helpUrl,
@@ -50,27 +57,27 @@ export class AxeAnalysisService {
           any: node.any,
           all: node.all,
           none: node.none,
-          failureSummary: node.failureSummary
-        }))
+          failureSummary: node.failureSummary,
+        })),
       })),
       incomplete: axeResults.incomplete.map(item => ({
         code: item.id,
-        impact: item.impact,
+        impact: item.impact ?? undefined,
         title: item.help || item.description,
         description: item.help && item.description && item.help !== item.description ? item.description : undefined,
         helpUrl: item.helpUrl,
         tags: item.tags,
         nodes: item.nodes.map(node => ({
           target: node.target,
-          html: node.html
-        }))
+          html: node.html,
+        })),
       })),
       passes: axeResults.passes.map(pass => ({
         code: pass.id,
         title: pass.help || pass.description,
         description: pass.help && pass.description && pass.help !== pass.description ? pass.description : undefined,
-        tags: pass.tags
-      }))
-    };
+        tags: pass.tags,
+      })),
+    }
   }
 }
