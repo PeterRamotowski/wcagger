@@ -10,6 +10,7 @@ export function combineEvaluationResults(input: unknown): AccessibilityCheckResu
   const evaluation = validateEvaluation(body.evaluation)
   if (!Array.isArray(body.scans) || !body.scans.length || body.scans.length > evaluation.samples.length) throw new Error('Choose at least one scanned sample')
   const scanned = new Set<string>()
+  const partial = new Set<string>()
   const runs: ScanEvidence['runs'] = []
   const observations: ScanEvidence['observations'] = []
   const decisions: FindingGroupingDecision[] = []
@@ -24,6 +25,7 @@ export function combineEvaluationResults(input: unknown): AccessibilityCheckResu
     // Validate references, identities, and any local grouping decisions before remapping sample IDs.
     groupScanEvidence(evidence, evidence.grouping?.decisions)
     scanned.add(sample.id)
+    if (scan.partial === true) partial.add(sample.id)
     runs.push(...evidence.runs.map(run => ({ ...run, sampleId: sample.id, stateId: sample.state.id })))
     observations.push(...evidence.observations)
     decisions.push(...(evidence.grouping?.decisions ?? []))
@@ -32,7 +34,7 @@ export function combineEvaluationResults(input: unknown): AccessibilityCheckResu
   if (runs.length > 1000 || observations.length > 20000) throw new Error('Combined evidence is too large')
   const evidence: ScanEvidence = {
     schemaVersion: 1, sample: evaluation.samples[0]!, samples: evaluation.samples,
-    evaluation: { ...evaluation, scannedSampleIds: [...scanned] }, runs, observations,
+    evaluation: { ...evaluation, scannedSampleIds: [...scanned].filter(id => !partial.has(id)), partiallyScannedSampleIds: [...partial] }, runs, observations,
   }
   const history = validateScanEvidence({ ...evidence, grouping: { decisions: body.decisions ?? decisions } }).grouping!.decisions
   evidence.grouping = groupScanEvidence(evidence, history)

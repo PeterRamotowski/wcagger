@@ -1,3 +1,4 @@
+import { generateAssessmentsHTML } from './assessmentTemplate'
 import { generateProcessesHTML } from './processTemplate'
 import { generatePlanningHTML } from './planningTemplate'
 import { getCookie } from 'h3'
@@ -59,6 +60,7 @@ export function generateGroupedReportHTML(event: H3Event, report: GroupedReport,
     + (execution ? '<p class="note">' + t('batch_status_' + execution.status) + '</p>' : '')
     + generatePlanningHTML(report, t, e)
     + generateProcessesHTML(report, t, e)
+    + generateAssessmentsHTML(report, t, e)
     + inventory
     + attempts
     + '<h2>' + t('group_findings') + '</h2>' + (findings || '<p>' + t('group_no_findings') + '</p>')

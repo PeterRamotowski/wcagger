@@ -51,14 +51,14 @@ export const useAccessibilityCheck = () => {
     }
   }
 
-  const applyGroupingDecision = async (decision: FindingGroupingDecision) => {
+  const applyGroupingDecision = async (decision: FindingGroupingDecision, persistJob = true) => {
     const current = results.value
     if (!current || isGrouping.value) return
     isGrouping.value = true
     groupingError.value = null
     try {
       const response = await $fetch<{ success: boolean, data: EvidenceGrouping }>('/api/group-findings', {
-        method: 'POST', body: { evidence: current.evidence, decision },
+        method: 'POST', body: { evidence: { ...current.evidence, evaluation: current.evidence.evaluation ? { ...current.evidence.evaluation, manualAssessments: undefined, ...(!persistJob && { execution: undefined }) } : undefined }, decision },
       })
       if (results.value === current) {
         results.value = { ...current, evidence: { ...current.evidence, grouping: response.data } }

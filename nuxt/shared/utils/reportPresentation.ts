@@ -1,3 +1,4 @@
+import { manualAssessmentCoverage } from './manualAssessments'
 import { processCoverage } from './processes'
 import { samplingCoverage, compareSamplingSets } from './sampling'
 import type { DeepReadonly } from 'vue'
@@ -98,6 +99,7 @@ export function buildGroupedReport(results: DeepReadonly<AccessibilityCheckResul
   const byFinding = new Map(grouping.findings.map(item => [item.id, item]))
   return {
     evaluation: evidence.evaluation,
+    manual: evidence.evaluation ? manualAssessmentCoverage(evidence.evaluation, id => evidence.runs.filter(run => run.sampleId === id).map(run => run.id), evidence.observations.map(item => item.id)) : undefined,
     processes: evidence.evaluation ? processCoverage(evidence.evaluation, evidence.evaluation.scannedSampleIds, evidence.evaluation.partiallyScannedSampleIds) : undefined,
     planning: evidence.evaluation ? { coverage: samplingCoverage(evidence.evaluation, evidence.evaluation.scannedSampleIds), comparison: compareSamplingSets(evidence.evaluation, findings) } : undefined,
     url: results.url, timestamp: results.timestamp,

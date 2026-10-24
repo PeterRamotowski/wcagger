@@ -29,6 +29,8 @@ export function generateCSVContent(data: ExportData): string {
       for (const [index, step] of path.steps.entries()) add(['process-step', '', '', '', step.name, step.status, '', '', step.sampleId ?? '', step.stateId ?? '', step.url ?? '', '', '', '', '', data.timestamp, JSON.stringify({ processId: process.id, pathId: path.id, position: index + 1, ...step })])
     }
   }
+  for (const assessment of data.report.manual?.records ?? []) add(['manual-assessment', '', '', assessment.observationIds.join('; '), '', assessment.outcome, '', assessment.criterionId, assessment.sampleId, assessment.stateId, '', '', assessment.reviewer, '', '', assessment.reviewedAt, JSON.stringify(assessment)])
+  if (data.report.manual) add(['manual-coverage', '', '', '', '', '', '', '', '', '', '', '', '', '', '', data.timestamp, JSON.stringify({ expected: data.report.manual.expected, counts: data.report.manual.counts, stale: data.report.manual.stale })])
   const occurrenceOf = new Map<string, { findingId: string, occurrenceId: string, sampleId: string, stateId: string }>()
   for (const finding of data.report.findings) {
     add(['finding', finding.id, '', '', finding.title, finding.outcome, finding.issueType, finding.criteria.join('; '), '', '', '', '', finding.sources.join('; '), finding.engines.join('; '), '', data.timestamp, JSON.stringify({ occurrences: finding.occurrences.length, affectedSamples: finding.affectedSamples })])

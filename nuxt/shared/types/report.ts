@@ -1,3 +1,4 @@
+import type { manualAssessmentCoverage } from '../utils/manualAssessments'
 import type { processCoverage } from '../utils/processes'
 import type { samplingCoverage, compareSamplingSets } from '../utils/sampling'
 import type { EvaluationSnapshot } from './evaluation'
@@ -57,6 +58,7 @@ export interface ReportReview {
   resolved: boolean
 }
 export interface GroupedReport {
+  manual?: ReturnType<typeof manualAssessmentCoverage>
   processes?: ReturnType<typeof processCoverage>
   planning?: { coverage: ReturnType<typeof samplingCoverage>, comparison: ReturnType<typeof compareSamplingSets> }
   evaluation?: DeepReadonly<EvaluationSnapshot>

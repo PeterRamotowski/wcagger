@@ -1,32 +1,113 @@
 <script setup lang="ts">
+import type { ManualAssessment } from '~~/shared/types/manualAssessment'
+import type { AccessibilityCheckResults } from '~~/shared/types/accessibility'
+import { scanMatchesSample, newEvaluation } from '~~/shared/utils/evaluation'
+import { normalizeAssessments } from '~~/shared/utils/manualAssessments'
+import { buildGroupedReport } from '~~/shared/utils/reportPresentation'
+import { MAX_REPORT_HISTORY, MAX_ASSESSMENT_HISTORY } from '~~/shared/utils/savedEvaluation'
 import { ExclamationTriangleIcon } from '@heroicons/vue/24/outline'
 
 const { isLoading, loadingStep, results, error, checkAccessibility, applyGroupingDecision, isGrouping, groupingError, setResults, resetTest } = useAccessibilityCheck()
 const { url, selectedTools, selectedRunners, wcagLevel, handleFormSubmit, exportReport, handlePDFGeneration } = useAccessibilityForm()
 const mode = ref('quick')
-const { batchJob, batchReport, batchError, batchBusy, batchMatches, startBatch, retryBatch, refreshBatch, drawSamples, evaluation, scans, busySampleId, busy: evaluationBusy, error: evaluationError, sampleErrors, currentScan, scanSample, buildReport } = useEvaluation()
+const { scanHistory, detachBatch, currentRunIds, batchJob, batchReport, batchError, batchBusy, batchMatches, startBatch, retryBatch, refreshBatch, drawSamples, evaluation, scans, busySampleId, busy: evaluationBusy, error: evaluationError, sampleErrors, currentScan, scanSample, buildReport } = useEvaluation()
+const assessments = ref<ManualAssessment[]>([])
+const assessmentHistory = ref<ManualAssessment[]>([])
+const reportHistory = ref<AccessibilityCheckResults[]>([])
+const evaluationReport = ref<AccessibilityCheckResults | null>(null)
+const manualPending = ref(false)
+const savedDetached = ref(false)
+const workspaceError = ref<string | null>(null)
+const saved = useSavedEvaluations(() => ({ evaluation: evaluation.value, assessments: assessments.value, assessmentHistory: assessmentHistory.value, sampleErrors: sampleErrors.value, scans: scans.value, scanHistory: scanHistory.value, report: evaluationReport.value, reportHistory: reportHistory.value, tools: selectedTools.value, runners: selectedRunners.value }), (value) => {
+  detachBatch()
+  evaluation.value = value.evaluation
+  sampleErrors.value = value.sampleErrors ?? {}
+  scans.value = value.scans
+  scanHistory.value = value.scanHistory
+  assessments.value = value.assessments
+  assessmentHistory.value = value.assessmentHistory
+  reportHistory.value = value.reportHistory
+  evaluationReport.value = value.report
+  selectedTools.value = value.tools
+  selectedRunners.value = value.runners
+  savedDetached.value = true
+  mode.value = 'evaluation'
+  resetTest()
+  if (value.report) setResults(value.report)
+}, () => {
+  detachBatch()
+  evaluation.value = newEvaluation()
+  sampleErrors.value = {}
+  scans.value = {}
+  scanHistory.value = []
+  assessments.value = []
+  assessmentHistory.value = []
+  reportHistory.value = []
+  evaluationReport.value = null
+  manualPending.value = false
+  workspaceError.value = null
+  resetTest()
+})
+const runIdsBySample = computed(() => Object.fromEntries(evaluation.value.samples.map(sample => [sample.id, currentRunIds(sample.id, selectedTools.value, selectedRunners.value)])))
+const assessmentReport = computed(() => evaluationReport.value?.evidence.grouping ? buildGroupedReport(readonly(evaluationReport.value)) : null)
+const publishEvaluationReport = (report: AccessibilityCheckResults) => {
+  const old = evaluationReport.value
+  const signature = (report: AccessibilityCheckResults) => report.evidence.runs.map(run => run.id).sort().join(',')
+  if (old && signature(old) !== signature(report)) {
+    if (reportHistory.value.length >= MAX_REPORT_HISTORY) {
+      workspaceError.value = 'Report history is full. Download a backup and start a new workspace.'
+      return
+    }
+    reportHistory.value.push(JSON.parse(JSON.stringify(old)))
+  }
+  const next = JSON.parse(JSON.stringify(report)) as AccessibilityCheckResults
+  if (next.evidence.evaluation) next.evidence.evaluation.manualAssessments = normalizeAssessments(assessments.value)
+  evaluationReport.value = next
+  setResults(next)
+}
+const historyReady = () => {
+  workspaceError.value = null
+  if (reportHistory.value.length >= MAX_REPORT_HISTORY) {
+    workspaceError.value = 'Report history is full. Download a backup and start a new workspace.'
+    return false
+  }
+  return true
+}
+const startEvaluationBatch = () => {
+  if (historyReady()) void startBatch(selectedTools.value, selectedRunners.value)
+}
+const startSampleScan = (id: string) => {
+  if (historyReady()) void scanSample(id, selectedTools.value, selectedRunners.value)
+}
 const sampleStatuses = computed(() => Object.fromEntries(evaluation.value.samples.map((sample) => {
   if (batchJob.value && batchMatches(selectedTools.value, selectedRunners.value)) {
     const statuses = batchJob.value.tasks.filter(task => task.sampleId === sample.id).map(task => task.attempts[task.attempts.length - 1]!.status)
     const status = statuses.includes('running') ? 'scanning' : statuses.includes('queued') ? 'queued' : statuses.every(status => status === 'completed') ? 'scanned' : statuses.includes('completed') ? 'partial' : statuses.includes('failed') ? 'failed' : 'manual'
     return [sample.id, status]
   }
-  return [sample.id, busySampleId.value === sample.id ? 'scanning' : currentScan(sample, selectedTools.value, selectedRunners.value) ? 'scanned' : scans.value[sample.id] ? 'stale' : sample.preparation === 'manual' ? 'manual' : 'unscanned']
+  return [sample.id, busySampleId.value === sample.id ? 'scanning' : currentScan(sample, selectedTools.value, selectedRunners.value) ? 'scanned' : scans.value[sample.id]?.status === 'partial' && scanMatchesSample(scans.value[sample.id], sample, evaluation.value.targetStandard, selectedTools.value, selectedRunners.value) ? 'partial' : scans.value[sample.id] ? 'stale' : sampleErrors.value[sample.id] ? 'failed' : sample.preparation === 'manual' ? 'manual' : 'unscanned']
 })))
-const canBuildEvaluation = computed(() => Object.values(sampleStatuses.value).includes('scanned') || (!!batchJob.value && !batchBusy.value && batchMatches(selectedTools.value, selectedRunners.value)))
+const canBuildEvaluation = computed(() => assessments.value.length > 0 || ['scanned', 'partial'].some(status => Object.values(sampleStatuses.value).includes(status)) || (!!batchJob.value && !batchBusy.value && batchMatches(selectedTools.value, selectedRunners.value)))
 const buildEvaluationReport = async () => {
-  const report = await buildReport(selectedTools.value, selectedRunners.value, results.value)
-  if (report)
-    setResults(report)
+  if (!historyReady()) return
+  const report = await buildReport(selectedTools.value, selectedRunners.value, evaluationReport.value ? readonly(evaluationReport.value) : null)
+  if (report) publishEvaluationReport(report)
 }
-watch(mode, () => resetTest())
+watch(mode, (value) => {
+  resetTest()
+  if (value === 'evaluation' && evaluationReport.value) setResults(evaluationReport.value)
+}, { flush: 'sync' })
+watch(results, (value) => {
+  if (value?.evidence.evaluation?.id === evaluation.value.id && toRaw(value) !== toRaw(evaluationReport.value)) evaluationReport.value = JSON.parse(JSON.stringify(value))
+})
 watch(batchReport, (report) => {
   if (report)
-    setResults(report)
+    publishEvaluationReport(report)
 })
 watch(() => batchJob.value?.id, () => {
   if (!batchJob.value)
     return
+  savedDetached.value = false
   selectedTools.value = [...batchJob.value.tools]
   selectedRunners.value = [...batchJob.value.runners]
   mode.value = 'evaluation'
@@ -89,7 +170,7 @@ provide('selectError', selectError)
     <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <fieldset
         class="mb-5 flex flex-wrap gap-4"
-        :disabled="isLoading || evaluationBusy || isGrouping"
+        :disabled="isLoading || evaluationBusy || isGrouping || manualPending || saved.busy.value"
       >
         <legend class="sr-only">
           {{ $t('eval_mode') }}
@@ -105,6 +186,30 @@ provide('selectError', selectError)
           value="evaluation"
         >{{ $t('eval_title') }}</label>
       </fieldset>
+      <EvaluationSavedProgress
+        v-if="mode === 'evaluation'"
+        :entries="saved.entries.value"
+        :busy="evaluationBusy || isGrouping || saved.busy.value"
+        :dirty="saved.dirty.value"
+        :error="saved.error.value"
+        :status="saved.status.value"
+        :pending="manualPending"
+        :history="{ scans: scanHistory.length, reports: reportHistory.length, assessments: assessmentHistory.length }"
+        @refresh="saved.refreshList"
+        @save="saved.save"
+        @open="saved.load"
+        @remove="saved.remove"
+        @backup="saved.backup"
+        @import="saved.importFile"
+        @discard="saved.discard"
+      />
+      <p
+        v-if="workspaceError"
+        role="alert"
+        class="mb-4 text-sm text-red-800"
+      >
+        {{ workspaceError }}
+      </p>
       <EvaluationJobProgress
         v-if="mode === 'evaluation' && (batchJob || batchError)"
         :job="batchJob"
@@ -116,15 +221,15 @@ provide('selectError', selectError)
       <EvaluationSampleEditor
         v-if="mode === 'evaluation'"
         v-model="evaluation"
-        :busy="evaluationBusy || isGrouping"
+        :busy="evaluationBusy || isGrouping || saved.busy.value || manualPending"
         :busy-sample-id="busySampleId"
         :statuses="sampleStatuses"
         :sample-errors="sampleErrors"
         :error="evaluationError"
         :can-build="canBuildEvaluation"
-        @scan="scanSample($event, selectedTools, selectedRunners)"
+        @scan="startSampleScan"
         @build="buildEvaluationReport"
-        @batch="startBatch(selectedTools, selectedRunners)"
+        @batch="startEvaluationBatch"
         @draw="drawSamples"
       >
         <FormToolSelector
@@ -147,6 +252,24 @@ provide('selectError', selectError)
         :is-loading="isLoading"
         @submit="onFormSubmit"
       />
+
+      <EvaluationAssessmentEditor
+        v-if="mode === 'evaluation'"
+        :key="evaluation.id"
+        v-model="assessments"
+        :evaluation="evaluation"
+        :run-ids="runIdsBySample"
+        :report="assessmentReport"
+        :busy="evaluationBusy || isGrouping || saved.busy.value || assessmentHistory.length >= MAX_ASSESSMENT_HISTORY"
+        @archive="assessmentHistory.push($event)"
+        @pending="manualPending = $event"
+      />
+      <p
+        v-if="assessmentHistory.length >= MAX_ASSESSMENT_HISTORY"
+        class="mt-3 text-sm text-amber-800"
+      >
+        {{ $t('manual_history_full') }}
+      </p>
 
       <LoadingIndicator
         v-if="isLoading"
@@ -184,7 +307,7 @@ provide('selectError', selectError)
                 :results="results"
                 :busy="isGrouping || evaluationBusy"
                 :error="groupingError"
-                @decision="applyGroupingDecision"
+                @decision="applyGroupingDecision($event, !savedDetached)"
               />
               <ReportAccessibility
                 v-else

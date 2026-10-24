@@ -40,6 +40,7 @@ const evaluation = computed(() => props.results.evidence.evaluation!)
     </p>
     <EvaluationPlanningReport :report="report" />
     <EvaluationProcessReport :report="report" />
+    <EvaluationAssessmentReport :report="report" />
     <details>
       <summary class="cursor-pointer font-medium">
         {{ $t('eval_sample_inventory') }}

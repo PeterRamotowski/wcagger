@@ -3,11 +3,33 @@ import type { DeepReadonly } from 'vue'
 import type { ApiResponse, AccessibilityCheckResults } from '~~/shared/types/accessibility'
 import type { EvaluationJob } from '~~/shared/types/evaluationJob'
 import type { Evaluation, EvaluationSample, SampleScan } from '~~/shared/types/evaluation'
+import { MAX_SCAN_HISTORY } from '~~/shared/utils/savedEvaluation'
+import { emptyEvaluationReport } from '~~/shared/utils/manualAssessments'
 import { newEvaluation, scanMatchesSample, validateEvaluation } from '~~/shared/utils/evaluation'
 
 export function useEvaluation() {
   const evaluation = ref(newEvaluation())
   const scans = ref<Record<string, SampleScan>>({})
+  const scanHistory = ref<SampleScan[]>([])
+  const archiveScan = (sampleId: string) => {
+    const old = scans.value[sampleId]
+    if (!old) return
+    const key = (scan: SampleScan) => scan.results.evidence.runs.map(run => run.id).sort().join(',')
+    if (!scanHistory.value.some(scan => key(scan) === key(old))) {
+      if (scanHistory.value.length >= MAX_SCAN_HISTORY) throw new Error('Scan history is full. Download a backup and start a new workspace.')
+      scanHistory.value.push(JSON.parse(JSON.stringify(old)))
+    }
+  }
+  const detachBatch = () => {
+    clearTimeout(pollTimer)
+    refreshVersion++
+    batchJob.value = null
+    batchReport.value = null
+    batchError.value = null
+    try {
+      sessionStorage.removeItem('wcagger-evaluation-job')
+    } catch { /* Storage may be disabled. */ }
+  }
   const busySampleId = ref<string | null>(null)
   const isBuilding = ref(false)
   const isSelecting = ref(false)
@@ -50,10 +72,11 @@ export function useEvaluation() {
         if (disposed || batchJob.value?.id !== id || version !== refreshVersion)
           return
         batchReport.value = report
-        for (const sample of job.evaluation.samples.filter(sample => report.evidence.evaluation!.scannedSampleIds.includes(sample.id))) {
+        for (const sample of job.evaluation.samples.filter(sample => report.evidence.evaluation!.scannedSampleIds.includes(sample.id) || report.evidence.evaluation!.partiallyScannedSampleIds?.includes(sample.id))) {
           const runs = report.evidence.runs.filter(run => run.sampleId === sample.id)
           const ids = new Set(runs.map(run => run.id))
-          scans.value[sample.id] = { sample: structuredClone(sample), standard: job.evaluation.targetStandard, tools: [...job.tools], runners: [...job.runners], results: { ...report, url: sample.url, evidence: { schemaVersion: 1, sample, runs, observations: report.evidence.observations.filter(item => ids.has(item.runId)) } } }
+          if (scans.value[sample.id] && JSON.stringify(scans.value[sample.id]!.results.evidence.runs.map(run => run.id)) !== JSON.stringify(runs.map(run => run.id))) archiveScan(sample.id)
+          scans.value[sample.id] = { status: report.evidence.evaluation!.partiallyScannedSampleIds?.includes(sample.id) ? 'partial' : 'complete', sample: structuredClone(sample), standard: job.evaluation.targetStandard, tools: [...job.tools], runners: [...job.runners], results: { ...report, url: sample.url, evidence: { schemaVersion: 1, sample, runs, observations: report.evidence.observations.filter(item => ids.has(item.runId)) } } }
         }
       }
     } catch (cause) {
@@ -79,6 +102,7 @@ export function useEvaluation() {
     clearTimeout(pollTimer)
     try {
       const snapshot = validateEvaluation(evaluation.value)
+      if (scanHistory.value.length + Object.keys(scans.value).length > MAX_SCAN_HISTORY) throw new Error('Scan history is full. Download a backup and start a new workspace.')
       const job = await $fetch<EvaluationJob>('/api/evaluation-jobs', { method: 'POST', body: { evaluation: snapshot, tools, runners } })
       batchJob.value = job
       batchReport.value = null
@@ -116,9 +140,10 @@ export function useEvaluation() {
       }
       if (!id)
         return
+      const reconnectVersion = refreshVersion
       try {
         const job = await $fetch<EvaluationJob>('/api/evaluation-jobs/' + id)
-        if (disposed)
+        if (disposed || reconnectVersion !== refreshVersion)
           return
         batchJob.value = job
         evaluation.value = structuredClone(job.evaluation)
@@ -135,7 +160,7 @@ export function useEvaluation() {
       refreshVersion++
       clearTimeout(pollTimer)
     })
-  const currentScan = (sample: EvaluationSample, tools: string[], runners: string[]) => scanMatchesSample(scans.value[sample.id], sample, evaluation.value.targetStandard, tools, runners)
+  const currentScan = (sample: EvaluationSample, tools: string[], runners: string[]) => scanMatchesSample(scans.value[sample.id], sample, evaluation.value.targetStandard, tools, runners) && scans.value[sample.id]?.status !== 'partial'
   const scanSample = async (id: string, tools: string[], runners: string[]) => {
     if (busy.value)
       return
@@ -153,7 +178,10 @@ export function useEvaluation() {
     busySampleId.value = id
     error.value = null
     sampleErrors.value = Object.fromEntries(Object.entries(sampleErrors.value).filter(([key]) => key !== id))
+    let replacing = false
     try {
+      archiveScan(id)
+      replacing = true
       // Validate just this sample; incomplete draft rows do not block independent scans.
       const snapshot = validateEvaluation({ ...evaluation.value, samples: [sample] })
       const captured = { sample: snapshot.samples[0]!, standard: snapshot.targetStandard, tools: [...tools], runners: [...runners] }
@@ -163,7 +191,7 @@ export function useEvaluation() {
       scans.value[id] = { ...captured, results: response.data }
     } catch (cause) {
       // A failed replacement must not silently reuse an older successful scan.
-      scans.value = Object.fromEntries(Object.entries(scans.value).filter(([key]) => key !== id))
+      if (replacing) scans.value = Object.fromEntries(Object.entries(scans.value).filter(([key]) => key !== id))
       sampleErrors.value[id] = cause instanceof Error ? cause.message : 'Sample scan failed'
     } finally {
       busySampleId.value = null
@@ -190,15 +218,17 @@ export function useEvaluation() {
         const report = await $fetch<AccessibilityCheckResults>('/api/evaluation-jobs/' + batchJob.value.id + '/report')
         return { ...report, evidence: { ...report.evidence, sample: snapshot.samples[0]!, samples: snapshot.samples, evaluation: { ...report.evidence.evaluation!, ...snapshot } } }
       }
-      const selected = snapshot.samples.filter(sample => currentScan(sample, tools, runners))
+      const selected = snapshot.samples.filter(sample => scanMatchesSample(scans.value[sample.id], sample, snapshot.targetStandard, tools, runners))
       const runIds = selected.flatMap(sample => scans.value[sample.id]!.results.evidence.runs.map(run => run.id)).sort()
       const sameEvidence = previous?.evidence.evaluation?.id === snapshot.id && JSON.stringify(runIds) === JSON.stringify(previous.evidence.runs.map(run => run.id).sort())
+      if (!selected.length) return emptyEvaluationReport(snapshot)
       const response = await $fetch<ApiResponse>('/api/evaluation-results', { method: 'POST', body: {
         ...(sameEvidence && { decisions: previous?.evidence.grouping?.decisions }),
-        evaluation: snapshot, scans: selected.map(sample => ({ sampleId: sample.id, evidence: scans.value[sample.id]!.results.evidence })),
+        evaluation: snapshot, scans: selected.map(sample => ({ sampleId: sample.id, evidence: { ...scans.value[sample.id]!.results.evidence, evaluation: undefined }, partial: scans.value[sample.id]!.status === 'partial' })),
       } })
       if (!response.success || !response.data)
         throw new Error(response.error || 'Could not build evaluation report')
+      if (sameEvidence && previous?.evidence.evaluation?.execution && response.data.evidence.evaluation && JSON.stringify(previous.evidence.evaluation.samples.map(sample => sample.id).sort()) === JSON.stringify(snapshot.samples.map(sample => sample.id).sort())) response.data.evidence.evaluation.execution = JSON.parse(JSON.stringify(previous.evidence.evaluation.execution))
       return response.data
     } catch (cause) {
       error.value = cause instanceof Error ? cause.message : 'Could not build evaluation report'
@@ -207,5 +237,10 @@ export function useEvaluation() {
       isBuilding.value = false
     }
   }
-  return { drawSamples, batchJob, batchReport, batchError, batchBusy, batchMatches, startBatch, retryBatch, refreshBatch, evaluation, scans, busySampleId, isBuilding, busy, error, sampleErrors, currentScan, scanSample, buildReport }
+  const currentRunIds = (sampleId: string, tools: string[], runners: string[]) => {
+    const sample = evaluation.value.samples.find(sample => sample.id === sampleId)
+    if (batchMatches(tools, runners) && batchReport.value) return batchReport.value.evidence.runs.filter(run => run.sampleId === sampleId).map(run => run.id)
+    return sample && scanMatchesSample(scans.value[sampleId], sample, evaluation.value.targetStandard, tools, runners) ? scans.value[sampleId]!.results.evidence.runs.map(run => run.id) : []
+  }
+  return { scanHistory, detachBatch, currentRunIds, drawSamples, batchJob, batchReport, batchError, batchBusy, batchMatches, startBatch, retryBatch, refreshBatch, evaluation, scans, busySampleId, isBuilding, busy, error, sampleErrors, currentScan, scanSample, buildReport }
 }

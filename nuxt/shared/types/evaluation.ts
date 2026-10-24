@@ -1,3 +1,4 @@
+import type { ManualAssessment } from './manualAssessment'
 import type { EvaluationExecution } from './evaluationJob'
 import type { ScanSample } from './scanEvidence'
 import type { AccessibilityCheckResults } from './accessibility'
@@ -22,6 +23,7 @@ export interface Evaluation {
   samples: EvaluationSample[]
 }
 export interface SampleScan {
+  status?: 'complete' | 'partial'
   sample: EvaluationSample
   standard: string
   tools: string[]
@@ -29,6 +31,7 @@ export interface SampleScan {
   results: AccessibilityCheckResults
 }
 export interface EvaluationSnapshot extends Evaluation {
+  manualAssessments?: ManualAssessment[]
   scannedSampleIds: string[]
   partiallyScannedSampleIds?: string[]
   execution?: EvaluationExecution
