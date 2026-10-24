@@ -15,7 +15,7 @@ const add = () => {
 }
 const paste = () => {
   const urls = parseBulkUrls(bulk.value)
-  const existing = props.modelValue.samples.filter(sample => sample.url.trim() || sample.name.trim() || sample.typeTags.length || sample.selectionReason.trim() || sample.preparation !== 'initial-page' || sample.state.description !== 'Initial page state' || sample.inventoryIds?.length || sample.selection?.kind === 'random' || sample.selection?.source || sample.selection?.method)
+  const existing = props.modelValue.samples.filter(sample => sample.url.trim() || sample.name.trim() || sample.typeTags.length || sample.selectionReason.trim() || sample.preparation !== 'initial-page' || sample.state.description !== 'Initial page state' || sample.inventoryIds?.length || sample.selection?.kind === 'random' || sample.selection?.source || sample.selection?.method || props.modelValue.processes?.some(process => process.paths.some(path => path.steps.some(step => step.sampleId === sample.id))))
   if (!urls.length || urls.some(url => !validSampleUrl(url)) || existing.length + urls.length > MAX_EVALUATION_SAMPLES) {
     bulkError.value = true
     return
@@ -248,6 +248,10 @@ const inputValue = (event: Event) => (event.target as HTMLInputElement).value
       >
         {{ $t('eval_add_sample') }}
       </button>
+      <EvaluationProcessEditor
+        :model-value="modelValue"
+        @update:model-value="emit('update:modelValue', $event)"
+      />
       <p class="text-sm text-gray-600">
         {{ $t('eval_build_help') }}
       </p>

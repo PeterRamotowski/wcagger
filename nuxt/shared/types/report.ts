@@ -1,3 +1,4 @@
+import type { processCoverage } from '../utils/processes'
 import type { samplingCoverage, compareSamplingSets } from '../utils/sampling'
 import type { EvaluationSnapshot } from './evaluation'
 import type { DeepReadonly } from 'vue'
@@ -56,6 +57,7 @@ export interface ReportReview {
   resolved: boolean
 }
 export interface GroupedReport {
+  processes?: ReturnType<typeof processCoverage>
   planning?: { coverage: ReturnType<typeof samplingCoverage>, comparison: ReturnType<typeof compareSamplingSets> }
   evaluation?: DeepReadonly<EvaluationSnapshot>
   url: string

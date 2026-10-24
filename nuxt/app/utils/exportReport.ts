@@ -22,6 +22,13 @@ export function generateCSVContent(data: ExportData): string {
   for (const entry of data.report.planning?.coverage.inventory ?? []) add(['inventory', '', '', '', entry.name, entry.sampleIds.length ? 'represented-in-selection' : 'uncovered', entry.kind, '', entry.sampleIds.join('; '), '', '', '', '', '', '', data.timestamp, JSON.stringify(entry)])
   for (const draw of data.report.evaluation?.sampling?.draws ?? []) add(['random-draw', '', '', '', draw.source, draw.coverage, '', '', draw.selected.map(item => item.sampleId).join('; '), '', '', '', '', '', '', draw.timestamp, JSON.stringify(draw)])
   if (data.report.planning) add(['sampling-comparison', '', '', '', '', 'needs-evaluator-review', '', '', '', '', '', '', '', '', '', data.timestamp, JSON.stringify(data.report.planning.comparison)])
+  for (const process of data.report.processes ?? []) {
+    add(['process', '', '', '', process.name, 'manual-assessment-pending', '', '', '', '', '', '', '', '', '', data.timestamp, JSON.stringify(process)])
+    for (const path of process.paths) {
+      add(['process-path', '', '', '', path.name, path.kind, '', '', '', '', '', '', '', '', '', data.timestamp, JSON.stringify({ processId: process.id, ...path })])
+      for (const [index, step] of path.steps.entries()) add(['process-step', '', '', '', step.name, step.status, '', '', step.sampleId ?? '', step.stateId ?? '', step.url ?? '', '', '', '', '', data.timestamp, JSON.stringify({ processId: process.id, pathId: path.id, position: index + 1, ...step })])
+    }
+  }
   const occurrenceOf = new Map<string, { findingId: string, occurrenceId: string, sampleId: string, stateId: string }>()
   for (const finding of data.report.findings) {
     add(['finding', finding.id, '', '', finding.title, finding.outcome, finding.issueType, finding.criteria.join('; '), '', '', '', '', finding.sources.join('; '), finding.engines.join('; '), '', data.timestamp, JSON.stringify({ occurrences: finding.occurrences.length, affectedSamples: finding.affectedSamples })])

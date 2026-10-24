@@ -16,6 +16,7 @@ export interface Evaluation {
   name: string
   scope: EvaluationScope
   inventory?: InventoryEntry[]
+  processes?: EvaluationProcess[]
   sampling?: SamplingPlan
   targetStandard: string
   samples: EvaluationSample[]
@@ -84,4 +85,32 @@ export interface SamplingPlan {
   exhaustionReason: string
   candidates: SamplingCandidate[]
   draws: RandomDraw[]
+}
+
+export type ProcessStateKind = 'initial' | 'form-error' | 'confirmation' | 'dialog' | 'authenticated' | 'other'
+export interface ProcessStep {
+  id: string
+  name: string
+  sampleId: string | null
+  stateId: string | null
+  stateKind: ProcessStateKind
+  action: string
+  prerequisites: string
+  role: string
+  expectedState: string
+}
+export interface ProcessPath {
+  id: string
+  name: string
+  kind: 'default' | 'critical-branch'
+  condition: string
+  steps: ProcessStep[]
+}
+export interface EvaluationProcess {
+  id: string
+  name: string
+  startingPoint: string
+  prerequisites: string
+  role: string
+  paths: ProcessPath[]
 }

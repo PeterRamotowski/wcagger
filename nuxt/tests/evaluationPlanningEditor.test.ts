@@ -63,7 +63,7 @@ describe('scope and sampling editor', () => {
     value.sampling!.source = 'Sitemap'
     value.sampling!.candidates = [{ id: newRecordId(), url: 'https://example.com/random', name: '', stateDescription: 'Initial page state', preparation: 'initial-page' }]
     const selected = selectRandomSamples(value, () => 0)
-    const wrapper = mount(SampleEditor, { props: { modelValue: selected, busy: false, busySampleId: null, statuses: {}, sampleErrors: {}, error: null, canBuild: false }, global: { stubs: { EvaluationPlanningEditor: true }, mocks: { $t: t } } })
+    const wrapper = mount(SampleEditor, { props: { modelValue: selected, busy: false, busySampleId: null, statuses: {}, sampleErrors: {}, error: null, canBuild: false }, global: { stubs: { EvaluationPlanningEditor: true, EvaluationProcessEditor: true }, mocks: { $t: t } } })
     const row = wrapper.findAll('[data-sample-id]')[1]!
     expect(row.find('input[type=url]').attributes('disabled')).toBeDefined()
     expect(row.findAll('textarea').at(-1)!.attributes('disabled')).toBeDefined()

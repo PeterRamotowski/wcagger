@@ -1,3 +1,4 @@
+import { processCoverage } from './processes'
 import { samplingCoverage, compareSamplingSets } from './sampling'
 import type { DeepReadonly } from 'vue'
 import type { AccessibilityCheckResults } from '../types/accessibility'
@@ -97,6 +98,7 @@ export function buildGroupedReport(results: DeepReadonly<AccessibilityCheckResul
   const byFinding = new Map(grouping.findings.map(item => [item.id, item]))
   return {
     evaluation: evidence.evaluation,
+    processes: evidence.evaluation ? processCoverage(evidence.evaluation, evidence.evaluation.scannedSampleIds, evidence.evaluation.partiallyScannedSampleIds) : undefined,
     planning: evidence.evaluation ? { coverage: samplingCoverage(evidence.evaluation, evidence.evaluation.scannedSampleIds), comparison: compareSamplingSets(evidence.evaluation, findings) } : undefined,
     url: results.url, timestamp: results.timestamp,
     standards: [...new Set([...(evidence.evaluation ? [evidence.evaluation.targetStandard] : []), ...evidence.runs.map(run => run.standard)])], tools: evidence.evaluation?.execution?.tools ? [...evidence.evaluation.execution.tools] : [...new Set(evidence.runs.map(run => run.tool))],
