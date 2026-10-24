@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
+import CandidateImport from './CandidateImport.vue'
 import type { Evaluation, EvaluationScope, InventoryEntry, SamplingCandidate, SamplingPlan } from '~~/shared/types/evaluation'
 import { newRecordId, parseBulkUrls, parseTypeTags, validSampleUrl } from '~~/shared/utils/evaluation'
 import { INVENTORY_KINDS, MAX_CANDIDATES, MAX_DRAWS, newSamplingPlan, samplingCoverage } from '~~/shared/utils/sampling'
@@ -212,6 +213,12 @@ const value = (event: Event) => (event.target as HTMLInputElement).value
         >
           {{ $t('planning_pool_error', { limit: MAX_CANDIDATES }) }}
         </p>
+        <CandidateImport
+          :candidates="plan.candidates"
+          :source="plan.source"
+          :busy="busy"
+          @import="sampling({ candidates: [...plan.candidates, ...$event.candidates], source: $event.source, coverage: 'unknown' })"
+        />
         <p class="text-sm">
           {{ $t('planning_eligible', { count: coverage.eligibleCandidates, total: plan.candidates.length }) }}
         </p>
