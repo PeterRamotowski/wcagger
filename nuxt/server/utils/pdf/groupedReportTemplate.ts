@@ -41,7 +41,12 @@ export function generateGroupedReportHTML(event: H3Event, report: GroupedReport,
   const evaluation = report.evaluation
   const inventory = evaluation
     ? '<h2>' + t('eval_sample_inventory') + '</h2><h3>' + e(evaluation.name) + '</h3><p>' + e(evaluation.scope.description) + '</p><p>' + t('eval_scan_coverage').replace('{scanned}', String(evaluation.scannedSampleIds.length)).replace('{total}', String(evaluation.samples.length)) + '</p>'
-    + evaluation.samples.map(sample => '<div class="observation"><h3>' + e(sample.name || sample.url) + '</h3><p>' + e(sample.url) + '</p><p>' + t('eval_types') + ': ' + e(sample.typeTags.join(', ')) + '</p><p>' + t('eval_selection_reason') + ': ' + e(sample.selectionReason) + '</p><p>' + t('eval_state') + ': ' + e(sample.state.description) + '</p><p>' + t(evaluation.scannedSampleIds.includes(sample.id) ? 'eval_status_scanned' : sample.preparation === 'manual' ? 'eval_status_manual' : 'eval_status_unscanned') + '</p></div>').join('')
+    + evaluation.samples.map(sample => '<div class="observation"><h3>' + e(sample.name || sample.url) + '</h3><p>' + e(sample.url) + '</p><p>' + t('eval_types') + ': ' + e(sample.typeTags.join(', ')) + '</p><p>' + t('eval_selection_reason') + ': ' + e(sample.selectionReason) + '</p><p>' + t('eval_state') + ': ' + e(sample.state.description) + '</p><p>' + t(evaluation.scannedSampleIds.includes(sample.id) ? 'eval_status_scanned' : evaluation.partiallyScannedSampleIds?.includes(sample.id) ? 'eval_status_partial' : sample.preparation === 'manual' ? 'eval_status_manual' : 'eval_status_unscanned') + '</p></div>').join('')
+    : ''
+  const execution = evaluation?.execution
+  const attempts = execution
+    ? '<h2>' + t('batch_engine_details') + '</h2><p class="note">' + t('batch_status_' + execution.status) + '</p>'
+    + execution.tasks.map(task => '<div class="observation"><h3>' + e(evaluation!.samples.find(sample => sample.id === task.sampleId)?.name || evaluation!.samples.find(sample => sample.id === task.sampleId)?.url) + ' | ' + e(task.key) + '</h3>' + task.attempts.map((attempt, index) => '<p>' + t('batch_attempt') + ' ' + (index + 1) + ': ' + t('batch_work_' + attempt.status) + '</p><p>' + e(attempt.completedAt || attempt.startedAt) + '</p>' + (attempt.error ? '<p>' + e(attempt.error) + '</p>' : '')).join('') + '</div>').join('')
     : ''
   return '<!doctype html><html><head><meta charset="utf-8"><title>' + t('wcag_accessibility_report') + '</title><style>'
     + '@page{size:A4}*{box-sizing:border-box}body{font:11px/1.5 Arial,sans-serif;color:#172033;margin:0}h1{font-size:24px;line-height:1.2;margin:0 0 10px}h2{font-size:17px;border-bottom:2px solid #cbd5e1;padding-bottom:5px;margin-top:24px}h3{font-size:13px;margin:12px 0 5px}h4,h5{font-size:11px;margin:8px 0 4px}h1,h2,h3,h4,h5{break-after:avoid}p{margin:5px 0;overflow-wrap:anywhere}.meta{color:#475569;font-size:10px}.metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:16px 0}.metric{padding:10px;background:#eff6ff;border:1px solid #dbeafe;border-radius:6px}.number{display:block;font-size:23px;font-weight:bold}.finding-lead,.occurrence-lead{break-inside:avoid;break-after:avoid}.finding{margin:18px 0;padding-top:5px;border-top:1px solid #94a3b8}.occurrence{margin:10px 0;padding-left:12px;border-left:3px solid #cbd5e1}.observation{margin:10px 0;padding:8px 10px;background:#f8fafc;border:1px solid #e2e8f0;break-inside:avoid}pre{font:9px/1.45 monospace;white-space:pre-wrap;overflow-wrap:anywhere;word-break:break-all;margin:6px 0;padding:6px;background:#edf2f7}.note{padding:10px;background:#f1f5f9;border-radius:6px} .section{break-before:auto}'
@@ -49,7 +54,9 @@ export function generateGroupedReportHTML(event: H3Event, report: GroupedReport,
     + '<div class="metrics">' + metrics.map(([key, value]) => '<div class="metric"><span class="number">' + value + '</span>' + t(key) + '</div>').join('') + '</div>'
     + '<p class="meta">' + t('group_raw_observations') + ': ' + report.summary.rawObservations + ' | ' + t('group_unresolved_occurrences') + ': ' + report.summary.unresolvedElementOccurrences + '</p>'
     + '<p class="note">' + t('group_report_note') + ' ' + t('group_not_conformance') + '</p>'
+    + (execution ? '<p class="note">' + t('batch_status_' + execution.status) + '</p>' : '')
     + inventory
+    + attempts
     + '<h2>' + t('group_findings') + '</h2>' + (findings || '<p>' + t('group_no_findings') + '</p>')
     + (reviews ? '<h2>' + t('group_review_grouping') + '</h2>' + reviews : '')
     + (history ? '<h2>' + t('group_decision_history') + '</h2>' + history : '')

@@ -97,7 +97,7 @@ export function buildGroupedReport(results: DeepReadonly<AccessibilityCheckResul
   return {
     evaluation: evidence.evaluation,
     url: results.url, timestamp: results.timestamp,
-    standards: [...new Set(evidence.runs.map(run => run.standard))], tools: [...new Set(evidence.runs.map(run => run.tool))],
+    standards: [...new Set([...(evidence.evaluation ? [evidence.evaluation.targetStandard] : []), ...evidence.runs.map(run => run.standard)])], tools: evidence.evaluation?.execution?.tools ? [...evidence.evaluation.execution.tools] : [...new Set(evidence.runs.map(run => run.tool))],
     summary: { ...grouping.summary }, findings, elements, pages: [...groups.values()], runs: [...evidence.runs], decisions: grouping.decisions,
     automatedChecks: {
       passedObservations: evidence.observations.filter(item => item.outcome === 'pass').length,

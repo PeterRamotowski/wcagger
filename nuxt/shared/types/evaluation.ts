@@ -1,3 +1,4 @@
+import type { EvaluationExecution } from './evaluationJob'
 import type { ScanSample } from './scanEvidence'
 import type { AccessibilityCheckResults } from './accessibility'
 
@@ -24,4 +25,6 @@ export interface SampleScan {
 }
 export interface EvaluationSnapshot extends Evaluation {
   scannedSampleIds: string[]
+  partiallyScannedSampleIds?: string[]
+  execution?: EvaluationExecution
 }

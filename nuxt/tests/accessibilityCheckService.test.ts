@@ -8,6 +8,9 @@ import { axeResults, pa11yResults } from './fixtures/scanResults'
 
 const scanners = vi.hoisted(() => ({ axe: vi.fn(), tags: vi.fn() }))
 vi.mock('puppeteer', () => ({ default: { launch: vi.fn() } }))
+vi.mock('../server/services/scanNetworkService', () => ({ createScanNetwork: async () => ({ args: [], assertTarget: async () => {
+}, close: async () => {
+} }) }))
 vi.mock('pa11y', () => ({ default: vi.fn() }))
 vi.mock('@axe-core/puppeteer', () => ({
   AxePuppeteer: class {
@@ -16,10 +19,11 @@ vi.mock('@axe-core/puppeteer', () => ({
       return this
     }
 
-    analyze() { return scanners.axe() }
+    analyze() {
+      return scanners.axe()
+    }
   },
 }))
-
 function setup() {
   const page = { goto: vi.fn(), close: vi.fn(), setViewport: vi.fn(), setUserAgent: vi.fn() }
   const browser = { newPage: vi.fn().mockResolvedValue(page), close: vi.fn() }
@@ -28,16 +32,13 @@ function setup() {
   vi.mocked(pa11y).mockResolvedValue(pa11yResults())
   return { page, browser, service: new AccessibilityCheckService() }
 }
-
 const request = { url: 'https://example.test/', tools: ['axe', 'pa11y'], standard: 'WCAG21AA', runners: ['axe', 'htmlcs'] }
-
 beforeEach(() => {
   vi.mocked(puppeteer.launch).mockReset()
   vi.mocked(pa11y).mockReset()
   scanners.axe.mockReset()
   scanners.tags.mockReset()
 })
-
 describe('scan orchestration and compatibility', () => {
   it('preserves legacy summaries while attributing evidence to engines, sample and state', async () => {
     const { service, browser, page } = setup()
@@ -53,7 +54,6 @@ describe('scan orchestration and compatibility', () => {
     expect(browser.close).toHaveBeenCalledOnce()
     expect(page.close).toHaveBeenCalledOnce()
   })
-
   it('keeps one prepared page and preserves the Pa11y-only navigation policy', async () => {
     const { service, browser, page } = setup()
     await service.run({ ...request, tools: ['pa11y'] })
@@ -61,7 +61,6 @@ describe('scan orchestration and compatibility', () => {
     expect(page.goto).toHaveBeenCalledWith(request.url, expect.objectContaining({ waitUntil: 'networkidle2' }))
     expect(pa11y).toHaveBeenCalledWith(request.url, expect.objectContaining({ page, ignoreUrl: true }))
   })
-
   it('keeps separate executions and their sample/state identities independent', async () => {
     const { service } = setup()
     const first = await service.run(request)
@@ -71,7 +70,6 @@ describe('scan orchestration and compatibility', () => {
     const priorIds = new Set(first.evidence.runs.map(run => run.id))
     expect(second.evidence.runs.every(run => !priorIds.has(run.id))).toBe(true)
   })
-
   it('does not mutate previous results when appending or finalizing', async () => {
     const { service } = setup()
     const processor = new ResultsProcessor()
@@ -89,7 +87,6 @@ describe('scan orchestration and compatibility', () => {
     expect(finalized.evidence.runs.every(run => run.sampleId === initial.evidence.sample.id)).toBe(true)
   })
 })
-
 describe('scan failure regression', () => {
   it('rejects Pa11y failures instead of returning empty successful results', async () => {
     const { service, browser } = setup()
@@ -99,7 +96,6 @@ describe('scan failure regression', () => {
     expect(browser.close).toHaveBeenCalledOnce()
     expect(scanners.axe).not.toHaveBeenCalled()
   })
-
   it('rejects Axe navigation failures and closes both page and browser', async () => {
     const { service, browser, page } = setup()
     const error = new Error('Axe navigation failed')
@@ -109,7 +105,6 @@ describe('scan failure regression', () => {
     expect(browser.close).toHaveBeenCalledOnce()
     expect(pa11y).not.toHaveBeenCalled()
   })
-
   it('rejects Axe analysis failures after successful navigation', async () => {
     const { service, browser, page } = setup()
     const error = new Error('Axe analysis failed')
@@ -118,7 +113,6 @@ describe('scan failure regression', () => {
     expect(page.close).toHaveBeenCalledOnce()
     expect(browser.close).toHaveBeenCalledOnce()
   })
-
   it('does not return earlier Axe results as success when Pa11y subsequently fails', async () => {
     const { service, browser } = setup()
     const error = new Error('Pa11y timed out')
@@ -127,12 +121,12 @@ describe('scan failure regression', () => {
     expect(scanners.axe).toHaveBeenCalledOnce()
     expect(browser.close).toHaveBeenCalledOnce()
   })
-
   it('returns an API failure body when Pa11y throws', async () => {
     const { browser } = setup()
     const error = new Error('Pa11y navigation failed')
     vi.mocked(pa11y).mockRejectedValue(error)
-    vi.spyOn(console, 'error').mockImplementation(() => {})
+    vi.spyOn(console, 'error').mockImplementation(() => {
+    })
     vi.stubGlobal('defineEventHandler', (handler: (event: unknown) => unknown) => handler)
     vi.stubGlobal('setHeader', vi.fn())
     vi.stubGlobal('readBody', vi.fn().mockResolvedValue({ ...request, tools: ['pa11y'] }))
@@ -142,4 +136,43 @@ describe('scan failure regression', () => {
     expect(response).not.toHaveProperty('data')
     expect(browser.close).toHaveBeenCalledOnce()
   })
+})
+describe('partial engine execution', () => {
+  it('retains successful engine evidence when another engine fails and reports each runner separately', async () => {
+    const { service, browser, page } = setup()
+    vi.mocked(pa11y).mockRejectedValue(new Error('Runner failed'))
+    const updates: import('../shared/types/evaluationJob').EngineUpdate[] = []
+    const result = await service.runPartial(request, async (update) => {
+      updates.push(update)
+    })
+    expect(updates.filter(item => item.status === 'completed').map(item => item.key)).toEqual(['axe'])
+    expect(updates.filter(item => item.status === 'failed').map(item => item.key)).toEqual(['pa11y:axe', 'pa11y:htmlcs'])
+    expect(result.evidence.runs).toHaveLength(1)
+    expect(result.evidence.runs[0]!.tool).toBe('axe')
+    expect(page.close).toHaveBeenCalledOnce()
+    expect(browser.close).toHaveBeenCalledOnce()
+  })
+  it('closes browser resources when the sample deadline expires', async () => {
+    const { browser, page } = setup()
+    let interrupt: (error: Error) => void = () => {
+    }
+    scanners.axe.mockImplementation(() => new Promise((_, reject) => {
+      interrupt = reject
+    }))
+    browser.close.mockImplementation(async () => {
+      interrupt(new Error('Target closed after timeout'))
+    })
+    const service = new AccessibilityCheckService(undefined, undefined, undefined, undefined, undefined, 30)
+    await expect(service.run({ ...request, tools: ['axe'] })).rejects.toThrow('timeout')
+    expect(page.close).toHaveBeenCalledOnce()
+    expect(browser.close).toHaveBeenCalled()
+  })
+})
+
+it('rejects HTTP error pages before running engines', async () => {
+  const { service, page, browser } = setup()
+  page.goto.mockResolvedValue({ status: () => 503 })
+  await expect(service.run(request)).rejects.toThrow('HTTP 503')
+  expect(scanners.axe).not.toHaveBeenCalled()
+  expect(browser.close).toHaveBeenCalledOnce()
 })

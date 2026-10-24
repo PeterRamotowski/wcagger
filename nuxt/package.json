@@ -26,6 +26,7 @@
     "@types/validator": "^13.15.3",
     "axe-core": "^4.10.3",
     "eslint": "^9.34.0",
+    "ipaddr.js": "^2.5.0",
     "nuxi": "latest",
     "nuxt": "^4",
     "pa11y": "^9.0.0",

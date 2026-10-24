@@ -31,7 +31,7 @@ export function duplicateSampleIds(samples: EvaluationSample[]): string[] {
   }
   return [...groups.values()].filter(ids => ids.length > 1).flat()
 }
-export function scanMatchesSample(scan: SampleScan | undefined, sample: EvaluationSample, standard: string, tools: string[], runners: string[]): boolean {
+export function scanMatchesSample(scan: Pick<SampleScan, 'sample' | 'standard' | 'tools' | 'runners'> | undefined, sample: EvaluationSample, standard: string, tools: string[], runners: string[]): boolean {
   const sameSet = (a: string[], b: string[]) => [...a].sort().join(',') === [...b].sort().join(',')
   return !!scan && sample.preparation === 'initial-page' && scan.sample.id === sample.id
     && scan.sample.url === sample.url.trim() && scan.sample.state.id === sample.state.id

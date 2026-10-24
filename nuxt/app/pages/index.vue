@@ -1,57 +1,54 @@
 <script setup lang="ts">
 import { ExclamationTriangleIcon } from '@heroicons/vue/24/outline'
 
-const {
-  isLoading,
-  loadingStep,
-  results,
-  error,
-  checkAccessibility,
-  applyGroupingDecision,
-  isGrouping,
-  groupingError,
-  setResults,
-  resetTest,
-} = useAccessibilityCheck()
-
-const {
-  url,
-  selectedTools,
-  selectedRunners,
-  wcagLevel,
-  handleFormSubmit,
-  exportReport,
-  handlePDFGeneration,
-} = useAccessibilityForm()
-
+const { isLoading, loadingStep, results, error, checkAccessibility, applyGroupingDecision, isGrouping, groupingError, setResults, resetTest } = useAccessibilityCheck()
+const { url, selectedTools, selectedRunners, wcagLevel, handleFormSubmit, exportReport, handlePDFGeneration } = useAccessibilityForm()
 const mode = ref('quick')
-const { evaluation, scans, busySampleId, busy: evaluationBusy, error: evaluationError, sampleErrors, currentScan, scanSample, buildReport } = useEvaluation()
-const sampleStatuses = computed(() => Object.fromEntries(evaluation.value.samples.map(sample => [sample.id, busySampleId.value === sample.id ? 'scanning' : currentScan(sample, selectedTools.value, selectedRunners.value) ? 'scanned' : scans.value[sample.id] ? 'stale' : sample.preparation === 'manual' ? 'manual' : 'unscanned'])))
-const canBuildEvaluation = computed(() => Object.values(sampleStatuses.value).includes('scanned'))
+const { batchJob, batchReport, batchError, batchBusy, batchMatches, startBatch, retryBatch, refreshBatch, evaluation, scans, busySampleId, busy: evaluationBusy, error: evaluationError, sampleErrors, currentScan, scanSample, buildReport } = useEvaluation()
+const sampleStatuses = computed(() => Object.fromEntries(evaluation.value.samples.map((sample) => {
+  if (batchJob.value && batchMatches(selectedTools.value, selectedRunners.value)) {
+    const statuses = batchJob.value.tasks.filter(task => task.sampleId === sample.id).map(task => task.attempts[task.attempts.length - 1]!.status)
+    const status = statuses.includes('running') ? 'scanning' : statuses.includes('queued') ? 'queued' : statuses.every(status => status === 'completed') ? 'scanned' : statuses.includes('completed') ? 'partial' : statuses.includes('failed') ? 'failed' : 'manual'
+    return [sample.id, status]
+  }
+  return [sample.id, busySampleId.value === sample.id ? 'scanning' : currentScan(sample, selectedTools.value, selectedRunners.value) ? 'scanned' : scans.value[sample.id] ? 'stale' : sample.preparation === 'manual' ? 'manual' : 'unscanned']
+})))
+const canBuildEvaluation = computed(() => Object.values(sampleStatuses.value).includes('scanned') || (!!batchJob.value && !batchBusy.value && batchMatches(selectedTools.value, selectedRunners.value)))
 const buildEvaluationReport = async () => {
   const report = await buildReport(selectedTools.value, selectedRunners.value, results.value)
-  if (report) setResults(report)
+  if (report)
+    setResults(report)
 }
 watch(mode, () => resetTest())
-
+watch(batchReport, (report) => {
+  if (report)
+    setResults(report)
+})
+watch(() => batchJob.value?.id, () => {
+  if (!batchJob.value)
+    return
+  selectedTools.value = [...batchJob.value.tools]
+  selectedRunners.value = [...batchJob.value.runners]
+  mode.value = 'evaluation'
+})
 useHead({
   title: $t('page_title'),
   meta: [
     { name: 'description', content: $t('page_description') },
   ],
 })
-
-interface SelectedError { violation: CombinedResultItem, node: ViolationNode, toolName: string }
+interface SelectedError {
+  violation: CombinedResultItem
+  node: ViolationNode
+  toolName: string
+}
 const selectedError = ref<SelectedError | null>(null)
-
 const onFormSubmit = () => {
   handleFormSubmit((url, tools, standard, runners) => checkAccessibility(url, tools, standard, runners))
 }
-
 const onExportReport = (format: 'json' | 'csv') => {
   exportReport(format, results.value)
 }
-
 const onPDFGeneration = async () => {
   try {
     await handlePDFGeneration(results.value)
@@ -59,12 +56,10 @@ const onPDFGeneration = async () => {
     alert($t('pdf_generation_error'))
   }
 }
-
 // Provide error selection method to child components
 const selectError = (errorData: SelectedError) => {
   selectedError.value = errorData
 }
-
 provide('selectError', selectError)
 </script>
 
@@ -110,6 +105,14 @@ provide('selectError', selectError)
           value="evaluation"
         >{{ $t('eval_title') }}</label>
       </fieldset>
+      <EvaluationJobProgress
+        v-if="mode === 'evaluation' && (batchJob || batchError)"
+        :job="batchJob"
+        :error="batchError"
+        :busy="evaluationBusy || isGrouping"
+        @retry="retryBatch"
+        @refresh="refreshBatch"
+      />
       <EvaluationSampleEditor
         v-if="mode === 'evaluation'"
         v-model="evaluation"
@@ -121,6 +124,7 @@ provide('selectError', selectError)
         :can-build="canBuildEvaluation"
         @scan="scanSample($event, selectedTools, selectedRunners)"
         @build="buildEvaluationReport"
+        @batch="startBatch(selectedTools, selectedRunners)"
       >
         <FormToolSelector
           v-model="selectedTools"
@@ -177,7 +181,7 @@ provide('selectError', selectError)
               <ReportGroupedAccessibility
                 v-if="results.evidence.grouping"
                 :results="results"
-                :busy="isGrouping"
+                :busy="isGrouping || evaluationBusy"
                 :error="groupingError"
                 @decision="applyGroupingDecision"
               />

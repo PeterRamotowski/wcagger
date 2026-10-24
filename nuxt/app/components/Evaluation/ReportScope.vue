@@ -18,6 +18,18 @@ const evaluation = computed(() => props.results.evidence.evaluation!)
     >
       {{ evaluation.scope.description }}
     </p>
+    <p
+      v-if="evaluation.execution"
+      class="rounded bg-amber-50 p-3 text-sm font-medium"
+    >
+      {{ $t('batch_status_' + evaluation.execution.status) }}
+    </p>
+    <p
+      v-if="evaluation.partiallyScannedSampleIds?.length"
+      class="text-sm"
+    >
+      {{ $t('batch_partial_samples', { count: evaluation.partiallyScannedSampleIds.length }) }}
+    </p>
     <p class="text-sm">
       {{ $t('eval_scan_coverage', { scanned: evaluation.scannedSampleIds.length, total: evaluation.samples.length }) }}
     </p>
@@ -43,7 +55,7 @@ const evaluation = computed(() => props.results.evidence.evaluation!)
           <p>{{ $t('eval_types') }}: {{ sample.typeTags.join(', ') || '—' }}</p>
           <p>{{ $t('eval_selection_reason') }}: {{ sample.selectionReason || '—' }}</p>
           <p>{{ $t('eval_state') }}: {{ sample.state.description }}</p>
-          <p>{{ $t(evaluation.scannedSampleIds.includes(sample.id) ? 'eval_status_scanned' : sample.preparation === 'manual' ? 'eval_status_manual' : 'eval_status_unscanned') }}</p>
+          <p>{{ $t(evaluation.scannedSampleIds.includes(sample.id) ? 'eval_status_scanned' : evaluation.partiallyScannedSampleIds?.includes(sample.id) ? 'eval_status_partial' : sample.preparation === 'manual' ? 'eval_status_manual' : 'eval_status_unscanned') }}</p>
         </li>
       </ul>
     </details>

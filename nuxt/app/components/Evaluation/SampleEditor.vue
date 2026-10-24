@@ -4,7 +4,7 @@ import type { Evaluation } from '~~/shared/types/evaluation'
 import { duplicateSampleIds, MAX_EVALUATION_SAMPLES, newEvaluationSample, parseBulkUrls, parseTypeTags, validSampleUrl } from '~~/shared/utils/evaluation'
 
 const props = defineProps<{ modelValue: Evaluation, busy: boolean, busySampleId: string | null, statuses: Record<string, string>, sampleErrors: Record<string, string>, error: string | null, canBuild: boolean }>()
-const emit = defineEmits<{ 'update:modelValue': [value: Evaluation], 'scan': [id: string], 'build': [] }>()
+const emit = defineEmits<{ 'update:modelValue': [value: Evaluation], 'scan': [id: string], 'build': [], 'batch': [] }>()
 const bulk = ref('')
 const bulkError = ref(false)
 const duplicates = computed(() => new Set(duplicateSampleIds(props.modelValue.samples)))
@@ -53,6 +53,16 @@ const inputValue = (event: Event) => (event.target as HTMLInputElement).value
         @input="update({ scope: { description: inputValue($event) } })"
       /></label>
       <slot />
+      <button
+        type="button"
+        class="rounded bg-blue-700 px-4 py-3 font-semibold text-white disabled:opacity-50"
+        @click="emit('batch')"
+      >
+        {{ $t('batch_start') }}
+      </button>
+      <p class="text-sm text-gray-600">
+        {{ $t('batch_help') }}
+      </p>
       <details class="rounded border border-gray-200 p-3">
         <summary class="cursor-pointer font-medium">
           {{ $t('eval_bulk') }}
