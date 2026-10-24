@@ -4,7 +4,7 @@ import { ExclamationTriangleIcon } from '@heroicons/vue/24/outline'
 const { isLoading, loadingStep, results, error, checkAccessibility, applyGroupingDecision, isGrouping, groupingError, setResults, resetTest } = useAccessibilityCheck()
 const { url, selectedTools, selectedRunners, wcagLevel, handleFormSubmit, exportReport, handlePDFGeneration } = useAccessibilityForm()
 const mode = ref('quick')
-const { batchJob, batchReport, batchError, batchBusy, batchMatches, startBatch, retryBatch, refreshBatch, evaluation, scans, busySampleId, busy: evaluationBusy, error: evaluationError, sampleErrors, currentScan, scanSample, buildReport } = useEvaluation()
+const { batchJob, batchReport, batchError, batchBusy, batchMatches, startBatch, retryBatch, refreshBatch, drawSamples, evaluation, scans, busySampleId, busy: evaluationBusy, error: evaluationError, sampleErrors, currentScan, scanSample, buildReport } = useEvaluation()
 const sampleStatuses = computed(() => Object.fromEntries(evaluation.value.samples.map((sample) => {
   if (batchJob.value && batchMatches(selectedTools.value, selectedRunners.value)) {
     const statuses = batchJob.value.tasks.filter(task => task.sampleId === sample.id).map(task => task.attempts[task.attempts.length - 1]!.status)
@@ -125,6 +125,7 @@ provide('selectError', selectError)
         @scan="scanSample($event, selectedTools, selectedRunners)"
         @build="buildEvaluationReport"
         @batch="startBatch(selectedTools, selectedRunners)"
+        @draw="drawSamples"
       >
         <FormToolSelector
           v-model="selectedTools"

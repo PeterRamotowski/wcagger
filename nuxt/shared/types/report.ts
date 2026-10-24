@@ -1,3 +1,4 @@
+import type { samplingCoverage, compareSamplingSets } from '../utils/sampling'
 import type { EvaluationSnapshot } from './evaluation'
 import type { DeepReadonly } from 'vue'
 import type { EngineRun, EvidenceGrouping, ObservationOutcome } from './scanEvidence'
@@ -55,6 +56,7 @@ export interface ReportReview {
   resolved: boolean
 }
 export interface GroupedReport {
+  planning?: { coverage: ReturnType<typeof samplingCoverage>, comparison: ReturnType<typeof compareSamplingSets> }
   evaluation?: DeepReadonly<EvaluationSnapshot>
   url: string
   timestamp: string

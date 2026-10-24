@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import type { DeepReadonly } from 'vue'
+import { buildGroupedReport } from '~~/shared/utils/reportPresentation'
 import type { AccessibilityCheckResults } from '~~/shared/types/accessibility'
 
 const props = defineProps<{ results: DeepReadonly<AccessibilityCheckResults> }>()
+const report = computed(() => buildGroupedReport(props.results))
 const evaluation = computed(() => props.results.evidence.evaluation!)
 </script>
 
@@ -36,6 +38,7 @@ const evaluation = computed(() => props.results.evidence.evaluation!)
     <p class="text-sm text-gray-600">
       {{ $t('eval_snapshot_help') }}
     </p>
+    <EvaluationPlanningReport :report="report" />
     <details>
       <summary class="cursor-pointer font-medium">
         {{ $t('eval_sample_inventory') }}
@@ -52,6 +55,10 @@ const evaluation = computed(() => props.results.evidence.evaluation!)
           <p class="break-all">
             {{ sample.url }}
           </p>
+          <p>{{ $t('planning_selection_kind') }}: {{ $t(sample.selection?.kind === 'random' ? 'planning_random' : 'planning_structured') }}</p>
+          <p>{{ $t('planning_selection_source') }}: {{ sample.selection?.source || '—' }}</p>
+          <p>{{ $t('planning_selection_method') }}: {{ sample.selection?.method || '—' }}</p>
+          <p>{{ $t('planning_sample_links') }}: {{ evaluation.inventory?.filter(entry => sample.inventoryIds?.includes(entry.id)).map(entry => entry.name).join(', ') || '—' }}</p>
           <p>{{ $t('eval_types') }}: {{ sample.typeTags.join(', ') || '—' }}</p>
           <p>{{ $t('eval_selection_reason') }}: {{ sample.selectionReason || '—' }}</p>
           <p>{{ $t('eval_state') }}: {{ sample.state.description }}</p>

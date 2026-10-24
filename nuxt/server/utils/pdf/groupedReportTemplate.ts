@@ -1,3 +1,4 @@
+import { generatePlanningHTML } from './planningTemplate'
 import { getCookie } from 'h3'
 import type { H3Event } from 'h3'
 import type { GroupedReport } from '~~/shared/types/report'
@@ -41,7 +42,7 @@ export function generateGroupedReportHTML(event: H3Event, report: GroupedReport,
   const evaluation = report.evaluation
   const inventory = evaluation
     ? '<h2>' + t('eval_sample_inventory') + '</h2><h3>' + e(evaluation.name) + '</h3><p>' + e(evaluation.scope.description) + '</p><p>' + t('eval_scan_coverage').replace('{scanned}', String(evaluation.scannedSampleIds.length)).replace('{total}', String(evaluation.samples.length)) + '</p>'
-    + evaluation.samples.map(sample => '<div class="observation"><h3>' + e(sample.name || sample.url) + '</h3><p>' + e(sample.url) + '</p><p>' + t('eval_types') + ': ' + e(sample.typeTags.join(', ')) + '</p><p>' + t('eval_selection_reason') + ': ' + e(sample.selectionReason) + '</p><p>' + t('eval_state') + ': ' + e(sample.state.description) + '</p><p>' + t(evaluation.scannedSampleIds.includes(sample.id) ? 'eval_status_scanned' : evaluation.partiallyScannedSampleIds?.includes(sample.id) ? 'eval_status_partial' : sample.preparation === 'manual' ? 'eval_status_manual' : 'eval_status_unscanned') + '</p></div>').join('')
+    + evaluation.samples.map(sample => '<div class="observation"><h3>' + e(sample.name || sample.url) + '</h3><p>' + e(sample.url) + '</p><p>' + t('planning_selection_kind') + ': ' + t(sample.selection?.kind === 'random' ? 'planning_random' : 'planning_structured') + '</p><p>' + t('planning_selection_source') + ': ' + e(sample.selection?.source || '—') + '</p><p>' + t('planning_selection_method') + ': ' + e(sample.selection?.method || '—') + '</p><p>' + t('planning_sample_links') + ': ' + e(evaluation.inventory?.filter(entry => sample.inventoryIds?.includes(entry.id)).map(entry => entry.name).join(', ') || '—') + '</p><p>' + t('eval_types') + ': ' + e(sample.typeTags.join(', ')) + '</p><p>' + t('eval_selection_reason') + ': ' + e(sample.selectionReason) + '</p><p>' + t('eval_state') + ': ' + e(sample.state.description) + '</p><p>' + t(evaluation.scannedSampleIds.includes(sample.id) ? 'eval_status_scanned' : evaluation.partiallyScannedSampleIds?.includes(sample.id) ? 'eval_status_partial' : sample.preparation === 'manual' ? 'eval_status_manual' : 'eval_status_unscanned') + '</p></div>').join('')
     : ''
   const execution = evaluation?.execution
   const attempts = execution
@@ -55,6 +56,7 @@ export function generateGroupedReportHTML(event: H3Event, report: GroupedReport,
     + '<p class="meta">' + t('group_raw_observations') + ': ' + report.summary.rawObservations + ' | ' + t('group_unresolved_occurrences') + ': ' + report.summary.unresolvedElementOccurrences + '</p>'
     + '<p class="note">' + t('group_report_note') + ' ' + t('group_not_conformance') + '</p>'
     + (execution ? '<p class="note">' + t('batch_status_' + execution.status) + '</p>' : '')
+    + generatePlanningHTML(report, t, e)
     + inventory
     + attempts
     + '<h2>' + t('group_findings') + '</h2>' + (findings || '<p>' + t('group_no_findings') + '</p>')

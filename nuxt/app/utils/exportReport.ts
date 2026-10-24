@@ -19,6 +19,9 @@ export function generateCSVContent(data: ExportData): string {
   for (const task of data.report.evaluation?.execution?.tasks ?? []) {
     for (const attempt of task.attempts) add(['engine-attempt', '', '', '', '', attempt.status, '', '', task.sampleId, '', '', '', task.key, task.key === 'pa11y:htmlcs' ? 'htmlcs' : 'axe', '', attempt.completedAt ?? attempt.startedAt ?? data.timestamp, JSON.stringify(attempt)])
   }
+  for (const entry of data.report.planning?.coverage.inventory ?? []) add(['inventory', '', '', '', entry.name, entry.sampleIds.length ? 'represented-in-selection' : 'uncovered', entry.kind, '', entry.sampleIds.join('; '), '', '', '', '', '', '', data.timestamp, JSON.stringify(entry)])
+  for (const draw of data.report.evaluation?.sampling?.draws ?? []) add(['random-draw', '', '', '', draw.source, draw.coverage, '', '', draw.selected.map(item => item.sampleId).join('; '), '', '', '', '', '', '', draw.timestamp, JSON.stringify(draw)])
+  if (data.report.planning) add(['sampling-comparison', '', '', '', '', 'needs-evaluator-review', '', '', '', '', '', '', '', '', '', data.timestamp, JSON.stringify(data.report.planning.comparison)])
   const occurrenceOf = new Map<string, { findingId: string, occurrenceId: string, sampleId: string, stateId: string }>()
   for (const finding of data.report.findings) {
     add(['finding', finding.id, '', '', finding.title, finding.outcome, finding.issueType, finding.criteria.join('; '), '', '', '', '', finding.sources.join('; '), finding.engines.join('; '), '', data.timestamp, JSON.stringify({ occurrences: finding.occurrences.length, affectedSamples: finding.affectedSamples })])

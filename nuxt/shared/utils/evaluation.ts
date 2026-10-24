@@ -1,3 +1,4 @@
+import { newSamplingPlan, normalizeEvaluationPlanning } from './sampling'
 import type { Evaluation, EvaluationSample, SampleScan } from '../types/evaluation'
 
 export const MAX_EVALUATION_SAMPLES = 20
@@ -5,10 +6,10 @@ export function newRecordId(): string {
   return globalThis.crypto.randomUUID?.() ?? Array.from(globalThis.crypto.getRandomValues(new Uint8Array(16)), byte => byte.toString(16).padStart(2, '0')).join('')
 }
 export function newEvaluationSample(url = ''): EvaluationSample {
-  return { id: newRecordId(), url, name: '', typeTags: [], selectionReason: '', preparation: 'initial-page', state: { id: newRecordId(), description: 'Initial page state' } }
+  return { id: newRecordId(), url, name: '', typeTags: [], selectionReason: '', preparation: 'initial-page', selection: { kind: 'structured', source: '', method: '' }, inventoryIds: [], state: { id: newRecordId(), description: 'Initial page state' } }
 }
 export function newEvaluation(): Evaluation {
-  return { schemaVersion: 1, id: newRecordId(), name: '', scope: { description: '' }, targetStandard: 'WCAG21AA', samples: [newEvaluationSample()] }
+  return { schemaVersion: 1, id: newRecordId(), name: '', scope: { description: '' }, targetStandard: 'WCAG21AA', inventory: [], sampling: newSamplingPlan(), samples: [newEvaluationSample()] }
 }
 export function parseTypeTags(value: string): string[] {
   return [...new Set(value.split(',').map(tag => tag.trim()).filter(Boolean))]
@@ -54,5 +55,5 @@ export function validateEvaluation(value: unknown): Evaluation {
     states.add(sample.state.id)
     return { id: sample.id, url: sample.url.trim(), name: sample.name.trim(), selectionReason: sample.selectionReason.trim(), preparation: sample.preparation as EvaluationSample['preparation'], typeTags: [...new Set(sample.typeTags as string[])], state: { id: sample.state.id, description: sample.state.description.trim() } }
   })
-  return { schemaVersion: 1, id: value.id, name: value.name.trim(), scope: { description: value.scope.description.trim() }, targetStandard: value.targetStandard, samples }
+  return { schemaVersion: 1, id: value.id, name: value.name.trim(), targetStandard: value.targetStandard, ...normalizeEvaluationPlanning(value, samples) }
 }

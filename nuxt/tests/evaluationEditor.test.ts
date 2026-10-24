@@ -11,7 +11,7 @@ const translate = (key: string, params: Record<string, unknown> = {}) => Object.
 function render() {
   const wrapper = mount(SampleEditor, {
     props: { modelValue: newEvaluation(), busy: false, busySampleId: null, statuses: {}, sampleErrors: {}, error: null, canBuild: false },
-    global: { mocks: { $t: translate } },
+    global: { stubs: { EvaluationPlanningEditor: true }, mocks: { $t: translate } },
   })
   return wrapper
 }

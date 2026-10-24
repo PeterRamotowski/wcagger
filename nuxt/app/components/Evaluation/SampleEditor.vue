@@ -4,7 +4,7 @@ import type { Evaluation } from '~~/shared/types/evaluation'
 import { duplicateSampleIds, MAX_EVALUATION_SAMPLES, newEvaluationSample, parseBulkUrls, parseTypeTags, validSampleUrl } from '~~/shared/utils/evaluation'
 
 const props = defineProps<{ modelValue: Evaluation, busy: boolean, busySampleId: string | null, statuses: Record<string, string>, sampleErrors: Record<string, string>, error: string | null, canBuild: boolean }>()
-const emit = defineEmits<{ 'update:modelValue': [value: Evaluation], 'scan': [id: string], 'build': [], 'batch': [] }>()
+const emit = defineEmits<{ 'update:modelValue': [value: Evaluation], 'scan': [id: string], 'build': [], 'batch': [], 'draw': [] }>()
 const bulk = ref('')
 const bulkError = ref(false)
 const duplicates = computed(() => new Set(duplicateSampleIds(props.modelValue.samples)))
@@ -15,7 +15,7 @@ const add = () => {
 }
 const paste = () => {
   const urls = parseBulkUrls(bulk.value)
-  const existing = props.modelValue.samples.filter(sample => sample.url.trim() || sample.name.trim() || sample.typeTags.length || sample.selectionReason.trim() || sample.preparation !== 'initial-page' || sample.state.description !== 'Initial page state')
+  const existing = props.modelValue.samples.filter(sample => sample.url.trim() || sample.name.trim() || sample.typeTags.length || sample.selectionReason.trim() || sample.preparation !== 'initial-page' || sample.state.description !== 'Initial page state' || sample.inventoryIds?.length || sample.selection?.kind === 'random' || sample.selection?.source || sample.selection?.method)
   if (!urls.length || urls.some(url => !validSampleUrl(url)) || existing.length + urls.length > MAX_EVALUATION_SAMPLES) {
     bulkError.value = true
     return
@@ -50,8 +50,14 @@ const inputValue = (event: Event) => (event.target as HTMLInputElement).value
         maxlength="5000"
         rows="2"
         class="mt-1 block w-full rounded border border-gray-300 px-3 py-2"
-        @input="update({ scope: { description: inputValue($event) } })"
+        @input="update({ scope: { ...modelValue.scope, description: inputValue($event) } })"
       /></label>
+      <EvaluationPlanningEditor
+        :model-value="modelValue"
+        :busy="busy"
+        @update:model-value="emit('update:modelValue', $event)"
+        @draw="emit('draw')"
+      />
       <slot />
       <button
         type="button"
@@ -114,6 +120,7 @@ const inputValue = (event: Event) => (event.target as HTMLInputElement).value
         <label class="block text-sm font-medium">{{ $t('website_url') }}<input
           :value="sample.url"
           type="url"
+          :disabled="!!sample.selection?.drawId"
           maxlength="4000"
           required
           class="mt-1 block w-full rounded border border-gray-300 px-3 py-2"
@@ -141,6 +148,49 @@ const inputValue = (event: Event) => (event.target as HTMLInputElement).value
             @change="patch(sample.id, { typeTags: parseTypeTags(inputValue($event)) })"
           ></label>
         </div>
+        <fieldset class="min-w-0 space-y-2 rounded border border-gray-200 p-3">
+          <legend class="px-1 text-sm font-medium">
+            {{ $t('planning_sample_links') }}
+          </legend>
+          <p
+            v-if="!modelValue.inventory?.length"
+            class="text-sm text-gray-600"
+          >
+            {{ $t('planning_no_inventory') }}
+          </p>
+          <label
+            v-for="entry in modelValue.inventory"
+            :key="entry.id"
+            class="flex items-center gap-2 text-sm"
+          ><input
+            type="checkbox"
+            :checked="sample.inventoryIds?.includes(entry.id)"
+            @change="patch(sample.id, { inventoryIds: ($event.target as HTMLInputElement).checked ? [...(sample.inventoryIds || []), entry.id] : sample.inventoryIds?.filter(id => id !== entry.id) })"
+          >{{ entry.name || $t('planning_unnamed') }}</label>
+        </fieldset>
+        <label class="block text-sm font-medium">{{ $t('planning_selection_kind') }}<select
+          :value="sample.selection?.kind || 'structured'"
+          :disabled="!!sample.selection?.drawId"
+          class="mt-1 block w-full rounded border border-gray-300 px-3 py-2"
+          @change="patch(sample.id, { selection: { source: sample.selection?.source || '', method: sample.selection?.method || '', kind: inputValue($event) as 'structured' | 'random' } })"
+        ><option value="structured">{{ $t('planning_structured') }}</option><option value="random">{{ $t('planning_random') }}</option></select></label>
+        <label
+          v-for="key in ['source', 'method'] as const"
+          :key="key"
+          class="block text-sm font-medium"
+        >{{ $t('planning_selection_' + key) }}<input
+          :value="sample.selection?.[key]"
+          :disabled="!!sample.selection?.drawId"
+          maxlength="2000"
+          class="mt-1 block w-full rounded border border-gray-300 px-3 py-2"
+          @input="patch(sample.id, { selection: { kind: sample.selection?.kind || 'structured', source: sample.selection?.source || '', method: sample.selection?.method || '', [key]: inputValue($event) } })"
+        ></label>
+        <p
+          v-if="sample.selection?.drawId"
+          class="text-sm text-gray-600"
+        >
+          {{ $t('planning_draw_locked') }}
+        </p>
         <label class="block text-sm font-medium">{{ $t('eval_selection_reason') }}<textarea
           :value="sample.selectionReason"
           maxlength="2000"
@@ -149,12 +199,14 @@ const inputValue = (event: Event) => (event.target as HTMLInputElement).value
           @input="patch(sample.id, { selectionReason: inputValue($event) })"
         /></label>
         <label class="block text-sm font-medium">{{ $t('eval_preparation') }}<select
+          :disabled="!!sample.selection?.drawId"
           :value="sample.preparation"
           class="mt-1 block w-full rounded border border-gray-300 px-3 py-2"
           @change="patch(sample.id, { preparation: inputValue($event) as 'initial-page' | 'manual' })"
         ><option value="initial-page">{{ $t('eval_initial') }}</option><option value="manual">{{ $t('eval_manual') }}</option></select></label>
         <label class="block text-sm font-medium">{{ $t('eval_state') }}<textarea
           :value="sample.state.description"
+          :disabled="!!sample.selection?.drawId"
           maxlength="2000"
           rows="2"
           class="mt-1 block w-full rounded border border-gray-300 px-3 py-2"

@@ -2,7 +2,7 @@ import { computed, ref, getCurrentInstance, getCurrentScope, onMounted, onScopeD
 import type { DeepReadonly } from 'vue'
 import type { ApiResponse, AccessibilityCheckResults } from '~~/shared/types/accessibility'
 import type { EvaluationJob } from '~~/shared/types/evaluationJob'
-import type { EvaluationSample, SampleScan } from '~~/shared/types/evaluation'
+import type { Evaluation, EvaluationSample, SampleScan } from '~~/shared/types/evaluation'
 import { newEvaluation, scanMatchesSample, validateEvaluation } from '~~/shared/utils/evaluation'
 
 export function useEvaluation() {
@@ -10,6 +10,7 @@ export function useEvaluation() {
   const scans = ref<Record<string, SampleScan>>({})
   const busySampleId = ref<string | null>(null)
   const isBuilding = ref(false)
+  const isSelecting = ref(false)
   const error = ref<string | null>(null)
   const sampleErrors = ref<Record<string, string>>({})
   const batchJob = ref<EvaluationJob | null>(null)
@@ -17,7 +18,7 @@ export function useEvaluation() {
   const batchError = ref<string | null>(null)
   const startingBatch = ref(false)
   const batchBusy = computed(() => startingBatch.value || (!!batchJob.value && ['queued', 'running'].includes(batchJob.value.status)))
-  const busy = computed(() => !!busySampleId.value || isBuilding.value || batchBusy.value)
+  const busy = computed(() => !!busySampleId.value || isBuilding.value || isSelecting.value || batchBusy.value)
   let pollTimer: ReturnType<typeof setTimeout> | undefined
   let disposed = false
   let refreshVersion = 0
@@ -168,6 +169,16 @@ export function useEvaluation() {
       busySampleId.value = null
     }
   }
+  const drawSamples = async () => {
+    if (busy.value) return
+    isSelecting.value = true
+    error.value = null
+    try {
+      evaluation.value = await $fetch<Evaluation>('/api/evaluation-sampling', { method: 'POST', body: validateEvaluation(evaluation.value) })
+    } catch (cause) {
+      error.value = cause instanceof Error ? cause.message : 'Could not select random samples'
+    } finally { isSelecting.value = false }
+  }
   const buildReport = async (tools: string[], runners: string[], previous?: DeepReadonly<AccessibilityCheckResults> | null): Promise<AccessibilityCheckResults | null> => {
     if (busy.value)
       return null
@@ -196,5 +207,5 @@ export function useEvaluation() {
       isBuilding.value = false
     }
   }
-  return { batchJob, batchReport, batchError, batchBusy, batchMatches, startBatch, retryBatch, refreshBatch, evaluation, scans, busySampleId, isBuilding, busy, error, sampleErrors, currentScan, scanSample, buildReport }
+  return { drawSamples, batchJob, batchReport, batchError, batchBusy, batchMatches, startBatch, retryBatch, refreshBatch, evaluation, scans, busySampleId, isBuilding, busy, error, sampleErrors, currentScan, scanSample, buildReport }
 }

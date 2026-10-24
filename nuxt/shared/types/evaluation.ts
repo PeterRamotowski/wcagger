@@ -3,6 +3,8 @@ import type { ScanSample } from './scanEvidence'
 import type { AccessibilityCheckResults } from './accessibility'
 
 export interface EvaluationSample extends ScanSample {
+  selection?: SampleSelection
+  inventoryIds?: string[]
   name: string
   typeTags: string[]
   selectionReason: string
@@ -12,7 +14,9 @@ export interface Evaluation {
   schemaVersion: 1
   id: string
   name: string
-  scope: { description: string }
+  scope: EvaluationScope
+  inventory?: InventoryEntry[]
+  sampling?: SamplingPlan
   targetStandard: string
   samples: EvaluationSample[]
 }
@@ -27,4 +31,57 @@ export interface EvaluationSnapshot extends Evaluation {
   scannedSampleIds: string[]
   partiallyScannedSampleIds?: string[]
   execution?: EvaluationExecution
+}
+
+export interface EvaluationScope {
+  description: string
+  evaluator?: string
+  commissioner?: string
+  productName?: string
+  productUrl?: string
+  startDate?: string
+  endDate?: string
+  boundaries?: string
+  languages?: string[]
+  supportBaseline?: string
+}
+export type InventoryKind = 'common-view' | 'function' | 'sample-type' | 'technology' | 'other'
+export interface InventoryEntry { id: string, kind: InventoryKind, name: string, description: string }
+export interface SampleSelection {
+  kind: 'structured' | 'random'
+  source: string
+  method: string
+  drawId?: string
+  candidateId?: string
+}
+export interface SamplingCandidate {
+  id: string
+  url: string
+  name: string
+  stateDescription: string
+  preparation: 'initial-page' | 'manual'
+}
+export interface RandomDraw {
+  id: string
+  timestamp: string
+  method: 'crypto-random-without-replacement-v1'
+  source: string
+  coverage: 'unknown' | 'partial' | 'whole-scope'
+  coverageNotes: string
+  requestedCount: number
+  eligibleCount: number
+  excludedLocations: string[]
+  structuredSampleIds: string[]
+  pool: SamplingCandidate[]
+  selected: { sampleId: string, candidateId: string }[]
+}
+export interface SamplingPlan {
+  source: string
+  coverage: 'unknown' | 'partial' | 'whole-scope'
+  coverageNotes: string
+  rationale: string
+  comparisonNotes: string
+  exhaustionReason: string
+  candidates: SamplingCandidate[]
+  draws: RandomDraw[]
 }
