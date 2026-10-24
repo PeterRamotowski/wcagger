@@ -1,3 +1,4 @@
+import type { EvaluationReviewReport } from './evaluationReport'
 import type { manualAssessmentCoverage } from '../utils/manualAssessments'
 import type { processCoverage } from '../utils/processes'
 import type { samplingCoverage, compareSamplingSets } from '../utils/sampling'
@@ -12,6 +13,7 @@ export interface ReportObservation {
   engine: string
   ruleId: string
   outcome: ObservationOutcome
+  criteria: string[]
   title: string
   description?: string
   impact?: string | null
@@ -58,6 +60,7 @@ export interface ReportReview {
   resolved: boolean
 }
 export interface GroupedReport {
+  evaluationReview?: EvaluationReviewReport
   manual?: ReturnType<typeof manualAssessmentCoverage>
   processes?: ReturnType<typeof processCoverage>
   planning?: { coverage: ReturnType<typeof samplingCoverage>, comparison: ReturnType<typeof compareSamplingSets> }

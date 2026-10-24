@@ -1,21 +1,27 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import type { DeepReadonly } from 'vue'
-import type { ReportFinding } from '~~/shared/types/report'
+import type { CriterionReportRow } from '~~/shared/types/evaluationReport'
+import type { ReportFinding, ReportOccurrence } from '~~/shared/types/report'
 import type { ScanEvidence } from '~~/shared/types/scanEvidence'
 import { safeReportLink } from '~~/shared/utils/reportPresentation'
 
-const props = defineProps<{ finding: ReportFinding, evidence: DeepReadonly<ScanEvidence>, selected: boolean, occurrenceIds?: string[] }>()
+const props = defineProps<{ finding: ReportFinding, evidence: DeepReadonly<ScanEvidence>, selected: boolean, occurrenceIds?: string[], sampleOutcomes?: CriterionReportRow[] }>()
 const emit = defineEmits<{ select: [id: string, checked: boolean] }>()
 const occurrences = computed(() => props.finding.occurrences.filter(item => !props.occurrenceIds || props.occurrenceIds.includes(item.id)))
 const sources = computed(() => [...new Set(occurrences.value.flatMap(item => item.observations.map(observation => observation.source)))])
 const engines = computed(() => new Set(occurrences.value.flatMap(item => item.observations.map(observation => observation.engine)).filter(engine => engine !== 'unknown')).size)
 const sampleCount = computed(() => new Set(occurrences.value.map(item => item.sampleId)).size)
+const manualOutcomes = (occurrence: ReportOccurrence) => (props.sampleOutcomes ?? []).filter(item => occurrence.observations.some(observation => observation.criteria.includes(item.id))).flatMap((item) => {
+  const sample = item.samples.find(sample => sample.sampleId === occurrence.sampleId && sample.stateId === occurrence.stateId)
+  return sample ? [{ criterionId: item.id, ...sample }] : []
+})
 const original = (id: string) => JSON.stringify(props.evidence.observations.find(item => item.id === id)?.evidence, null, 2)
 </script>
 
 <template>
   <article
+    :data-finding-id="finding.id"
     class="rounded-lg border p-4"
     :class="finding.outcome === 'violation' ? 'border-red-200 bg-red-50/40' : 'border-slate-200 bg-slate-50/40'"
   >
@@ -42,6 +48,9 @@ const original = (id: string) => JSON.stringify(props.evidence.observations.find
         <h4 class="font-semibold text-gray-900 break-words">
           {{ finding.title }}
         </h4>
+        <p class="mt-1 break-all text-xs text-gray-600">
+          {{ $t('wf_finding_reference') }}: {{ finding.id }}
+        </p>
         <p class="mt-2 text-sm text-gray-700">
           {{ $t('group_occurrences') }}: {{ occurrences.length }} · {{ $t('group_sampled_pages') }}: {{ sampleCount }} · {{ $t('group_known_engines') }}: {{ engines }}
         </p>
@@ -78,6 +87,14 @@ const original = (id: string) => JSON.stringify(props.evidence.observations.find
               </p>
               <p class="mt-1 text-sm text-gray-700">
                 {{ $t('group_state') }}: {{ occurrence.state }}
+              </p>
+              <p
+                v-for="assessment in manualOutcomes(occurrence)"
+                :key="assessment.criterionId"
+                class="mt-2 text-sm"
+                data-occurrence-manual-outcome
+              >
+                WCAG {{ assessment.criterionId }} · {{ $t('wf_current_outcome') }}: {{ $t('manual_outcome_' + assessment.outcome) }}<span v-if="assessment.conflict"> · {{ $t(assessment.reconciled ? 'wf_conflict_explained' : 'wf_conflict_open') }}</span>
               </p>
               <pre
                 v-if="occurrence.selector"

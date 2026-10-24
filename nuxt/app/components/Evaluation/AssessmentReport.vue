@@ -46,7 +46,7 @@ defineProps<{ report: GroupedReport }>()
         {{ $t('manual_stale') }}
       </p>
       <p
-        v-for="key in ['reviewer', 'reviewedAt', 'environment', 'justification', 'supportingEvidence', 'notes'] as const"
+        v-for="key in ['reviewer', 'reviewedAt', 'environment', 'justification', 'supportingEvidence', 'reconciliation', 'notes'] as const"
         :key="key"
         class="whitespace-pre-wrap"
       >

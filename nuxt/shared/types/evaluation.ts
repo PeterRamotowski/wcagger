@@ -1,3 +1,4 @@
+import type { ReportingNotes } from './evaluationReport'
 import type { ManualAssessment } from './manualAssessment'
 import type { EvaluationExecution } from './evaluationJob'
 import type { ScanSample } from './scanEvidence'
@@ -31,6 +32,7 @@ export interface SampleScan {
   results: AccessibilityCheckResults
 }
 export interface EvaluationSnapshot extends Evaluation {
+  reporting?: ReportingNotes
   manualAssessments?: ManualAssessment[]
   scannedSampleIds: string[]
   partiallyScannedSampleIds?: string[]

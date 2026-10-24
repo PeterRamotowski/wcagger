@@ -38,6 +38,39 @@ const evaluation = computed(() => props.results.evidence.evaluation!)
     <p class="text-sm text-gray-600">
       {{ $t('eval_snapshot_help') }}
     </p>
+    <EvaluationReviewReport :report="report" />
+    <details
+      v-if="evaluation.execution"
+      class="rounded border border-gray-200 p-3"
+    >
+      <summary class="cursor-pointer font-medium">
+        {{ $t('batch_engine_details') }}
+      </summary>
+      <p class="mt-3 text-sm">
+        {{ $t('tools_used') }}: {{ evaluation.execution.tools.join(', ') }} · {{ evaluation.execution.runners.join(', ') }}
+      </p>
+      <section
+        v-for="task in evaluation.execution.tasks"
+        :key="task.sampleId + ':' + task.key"
+        class="mt-3 space-y-2 rounded border p-3 text-sm"
+      >
+        <h3 class="font-semibold">
+          {{ evaluation.samples.find(sample => sample.id === task.sampleId)?.name || evaluation.samples.find(sample => sample.id === task.sampleId)?.url || task.sampleId }} · {{ task.key }}
+        </h3>
+        <div
+          v-for="(attempt, index) in task.attempts"
+          :key="attempt.id"
+          class="space-y-1"
+        >
+          <p>{{ $t('batch_attempt') }} {{ index + 1 }}: {{ $t('batch_work_' + attempt.status) }}</p><p>{{ attempt.startedAt || '—' }} / {{ attempt.completedAt || '—' }}</p><p
+            v-if="attempt.error"
+            class="whitespace-pre-wrap"
+          >
+            {{ attempt.error }}
+          </p>
+        </div>
+      </section>
+    </details>
     <EvaluationPlanningReport :report="report" />
     <EvaluationProcessReport :report="report" />
     <EvaluationAssessmentReport :report="report" />

@@ -12,6 +12,7 @@ export interface ManualAssessment {
   stateId: string
   criterionId: string
   outcome: AssessmentOutcome
+  reconciliation?: string
   justification: string
   reviewer: string
   reviewedAt: string

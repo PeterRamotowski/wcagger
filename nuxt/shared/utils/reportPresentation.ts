@@ -1,3 +1,4 @@
+import { buildEvaluationReview } from './evaluationReporting'
 import { manualAssessmentCoverage } from './manualAssessments'
 import { processCoverage } from './processes'
 import { samplingCoverage, compareSamplingSets } from './sampling'
@@ -46,7 +47,7 @@ export function buildGroupedReport(results: DeepReadonly<AccessibilityCheckResul
     const run = runs.get(item.runId)!
     const presented: ReportObservation = {
       id: item.id, runId: item.runId, source: formatSource(run), engine: run.engine,
-      ruleId: item.ruleId, outcome: item.outcome, title: item.title,
+      ruleId: item.ruleId, outcome: item.outcome, criteria: criteriaFor(item), title: item.title,
       description: item.description, impact: item.impact, helpUrl: item.helpUrl,
       selector: formatLocator(item.element), html: item.element?.html,
       startedAt: run.startedAt, completedAt: run.completedAt,
@@ -97,7 +98,7 @@ export function buildGroupedReport(results: DeepReadonly<AccessibilityCheckResul
   const unlocated = [...occurrences.values()].filter(item => !known.has(item.id))
   if (unlocated.length) elements.push({ id: 'unresolved-elements', label: '', findingIds: [...new Set(unlocated.map(item => occurrenceFinding.get(item.id)!))], occurrenceIds: unlocated.map(item => item.id) })
   const byFinding = new Map(grouping.findings.map(item => [item.id, item]))
-  return {
+  const report: GroupedReport = {
     evaluation: evidence.evaluation,
     manual: evidence.evaluation ? manualAssessmentCoverage(evidence.evaluation, id => evidence.runs.filter(run => run.sampleId === id).map(run => run.id), evidence.observations.map(item => item.id)) : undefined,
     processes: evidence.evaluation ? processCoverage(evidence.evaluation, evidence.evaluation.scannedSampleIds, evidence.evaluation.partiallyScannedSampleIds) : undefined,
@@ -123,6 +124,8 @@ export function buildGroupedReport(results: DeepReadonly<AccessibilityCheckResul
       }
     }),
   }
+  report.evaluationReview = buildEvaluationReview(report)
+  return report
 }
 
 export interface FindingFilters { outcome?: string, source?: string, criterion?: string, issueType?: string }

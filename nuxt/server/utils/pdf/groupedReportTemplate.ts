@@ -1,3 +1,4 @@
+import { generateEvaluationReviewHTML } from './evaluationReviewTemplate'
 import { generateAssessmentsHTML } from './assessmentTemplate'
 import { generateProcessesHTML } from './processTemplate'
 import { generatePlanningHTML } from './planningTemplate'
@@ -27,6 +28,7 @@ export function generateGroupedReportHTML(event: H3Event, report: GroupedReport,
   ]
   const findings = report.findings.map(finding => '<section class="finding">'
     + '<div class="finding-lead"><h3>' + e(finding.title) + '</h3><p class="meta">' + e(finding.issueType) + ' | ' + t('group_outcome_' + finding.outcome) + '</p>'
+    + '<p class="meta">' + t('wf_finding_reference') + ': ' + e(finding.id) + '</p>'
     + '<p>' + t('group_occurrences') + ': ' + finding.occurrences.length + ' | ' + t('group_sampled_pages') + ': ' + finding.affectedSamples + ' | ' + t('group_known_engines') + ': ' + finding.engines.length + '</p>'
     + '<p>' + e(finding.sources.join(' | ')) + (finding.criteria.length ? ' | WCAG: ' + e(finding.criteria.join(', ')) : '') + '</p>'
     + '</div>' + finding.occurrences.map(occurrence => '<div class="occurrence"><div class="occurrence-lead"><h4>' + e(occurrence.sampleName || occurrence.url) + '</h4><p>' + e(occurrence.url) + '</p><p>' + t('group_state') + ': ' + e(occurrence.state) + '</p>'
@@ -58,12 +60,14 @@ export function generateGroupedReportHTML(event: H3Event, report: GroupedReport,
     + '<p class="meta">' + t('group_raw_observations') + ': ' + report.summary.rawObservations + ' | ' + t('group_unresolved_occurrences') + ': ' + report.summary.unresolvedElementOccurrences + '</p>'
     + '<p class="note">' + t('group_report_note') + ' ' + t('group_not_conformance') + '</p>'
     + (execution ? '<p class="note">' + t('batch_status_' + execution.status) + '</p>' : '')
+    + generateEvaluationReviewHTML(report, t, e)
     + generatePlanningHTML(report, t, e)
     + generateProcessesHTML(report, t, e)
-    + generateAssessmentsHTML(report, t, e)
     + inventory
     + attempts
     + '<h2>' + t('group_findings') + '</h2>' + (findings || '<p>' + t('group_no_findings') + '</p>')
+    + generateAssessmentsHTML(report, t, e)
+    + generateEvaluationReviewHTML(report, t, e, 'indexes')
     + (reviews ? '<h2>' + t('group_review_grouping') + '</h2>' + reviews : '')
     + (history ? '<h2>' + t('group_decision_history') + '</h2>' + history : '')
     + '<h2>' + t('group_configuration') + '</h2><p>' + t('group_automated_passes') + ': ' + report.automatedChecks.passedObservations + ' | ' + t('group_inapplicable') + ': ' + report.automatedChecks.inapplicableObservations + '</p>' + configuration + '</body></html>'

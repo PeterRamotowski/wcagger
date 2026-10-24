@@ -15,7 +15,7 @@ const criteria = computed(() => criteriaForTarget(props.evaluation.targetStandar
 const selectedCriterion = computed(() => criteria.value.find(criterion => criterion.id === criterionId.value))
 const selectedSample = computed(() => props.evaluation.samples.find(sample => sample.id === sampleId.value))
 const existing = computed(() => props.modelValue.find(item => item.sampleId === sampleId.value && item.criterionId === criterionId.value))
-const blank = (): ManualAssessment => ({ schemaVersion: 1, id: newRecordId(), sampleId: sampleId.value, stateId: selectedSample.value?.state.id ?? '', criterionId: criterionId.value, outcome: 'not-tested', justification: '', reviewer: '', reviewedAt: new Date().toISOString(), environment: '', methods: [], notes: '', supportingEvidence: '', observationIds: [], basis: assessmentBasis(props.evaluation, sampleId.value, props.runIds[sampleId.value] ?? []) })
+const blank = (): ManualAssessment => ({ schemaVersion: 1, id: newRecordId(), sampleId: sampleId.value, stateId: selectedSample.value?.state.id ?? '', criterionId: criterionId.value, outcome: 'not-tested', reconciliation: '', justification: '', reviewer: '', reviewedAt: new Date().toISOString(), environment: '', methods: [], notes: '', supportingEvidence: '', observationIds: [], basis: assessmentBasis(props.evaluation, sampleId.value, props.runIds[sampleId.value] ?? []) })
 const form = ref(blank())
 const baseline = ref(JSON.stringify(form.value))
 const pending = computed(() => JSON.stringify(form.value) !== baseline.value)
@@ -124,7 +124,7 @@ const toggleLink = (ids: string[], checked: boolean) => {
         :value="outcome"
       >{{ $t('manual_outcome_' + outcome) }}</option></select></label>
       <label
-        v-for="key in ['reviewer', 'environment', 'justification', 'supportingEvidence', 'notes'] as const"
+        v-for="key in ['reviewer', 'environment', 'justification', 'supportingEvidence', 'reconciliation', 'notes'] as const"
         :key="key"
         class="block text-sm font-medium"
       >{{ $t('manual_' + key) }}<textarea

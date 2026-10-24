@@ -1,3 +1,4 @@
+import { normalizeReportingNotes } from './reportingNotes'
 import { readonly } from 'vue'
 import type { AccessibilityCheckResults } from '../types/accessibility'
 import type { SavedEvaluation } from '../types/savedEvaluation'
@@ -48,7 +49,7 @@ export function validateSavedEvaluation(input: unknown): SavedEvaluation {
       }
       if (captured.partiallyScannedSampleIds !== undefined && (!Array.isArray(captured.partiallyScannedSampleIds) || !captured.partiallyScannedSampleIds.every(id => definition.samples.some(sample => sample.id === id)))) throw new Error('Invalid saved partial coverage')
       if (!Array.isArray(evidence.evaluation.scannedSampleIds) || !evidence.evaluation.scannedSampleIds.every(id => definition.samples.some(sample => sample.id === id))) throw new Error('Invalid saved sample coverage')
-      evidence.evaluation = { ...definition, scannedSampleIds: [...evidence.evaluation.scannedSampleIds], partiallyScannedSampleIds: evidence.evaluation.partiallyScannedSampleIds ?? [], ...(evidence.evaluation.execution && { execution: evidence.evaluation.execution }), manualAssessments: normalizeAssessments(evidence.evaluation.manualAssessments) }
+      evidence.evaluation = { ...definition, scannedSampleIds: [...evidence.evaluation.scannedSampleIds], partiallyScannedSampleIds: evidence.evaluation.partiallyScannedSampleIds ?? [], ...(evidence.evaluation.execution && { execution: evidence.evaluation.execution }), reporting: normalizeReportingNotes(evidence.evaluation.reporting), manualAssessments: normalizeAssessments(evidence.evaluation.manualAssessments) }
     }
     const samples = evidence.samples ?? [evidence.sample]
     if (!Array.isArray(samples) || samples.length > 20 || evidence.runs.some(run => !samples.some(sample => sample.id === run.sampleId && sample.state.id === run.stateId))) throw new Error('Invalid saved run sample/state')
@@ -107,7 +108,7 @@ export function validateSavedEvaluation(input: unknown): SavedEvaluation {
   const errors = input.sampleErrors ?? {}
   if (!record(errors) || Object.keys(errors).length > MAX_SCAN_HISTORY || !Object.values(errors).every(error => typeof error === 'string' && error.length <= 5000)) throw new Error('Invalid saved scan errors')
   const sampleErrors = errors as Record<string, string>
-  const saved: SavedEvaluation = { format: 'wcagger-workspace', schemaVersion: 1, id: input.id, revision: Number(input.revision), savedAt: input.savedAt, evaluation, sampleErrors, assessments: normalizeAssessments(input.assessments), assessmentHistory, scans, scanHistory: list(input.scanHistory, MAX_SCAN_HISTORY).map(scan), report: input.report === null ? null : result(input.report, true), reportHistory: list(input.reportHistory, MAX_REPORT_HISTORY).map(value => result(value, true)), tools: options(input.tools, ['axe', 'pa11y']), runners: options(input.runners, ['axe', 'htmlcs']) }
+  const saved: SavedEvaluation = { format: 'wcagger-workspace', schemaVersion: 1, id: input.id, revision: Number(input.revision), savedAt: input.savedAt, evaluation, sampleErrors, reporting: normalizeReportingNotes(input.reporting), assessments: normalizeAssessments(input.assessments), assessmentHistory, scans, scanHistory: list(input.scanHistory, MAX_SCAN_HISTORY).map(scan), report: input.report === null ? null : result(input.report, true), reportHistory: list(input.reportHistory, MAX_REPORT_HISTORY).map(value => result(value, true)), tools: options(input.tools, ['axe', 'pa11y']), runners: options(input.runners, ['axe', 'htmlcs']) }
   if (new TextEncoder().encode(JSON.stringify(saved)).byteLength > MAX_WORKSPACE_BYTES) throw new Error('Saved workspace exceeds 25 MB; export and start a new workspace')
   return saved
 }

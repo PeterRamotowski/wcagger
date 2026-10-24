@@ -1,3 +1,4 @@
+import type { ReportingNotes } from './evaluationReport'
 import type { Evaluation, SampleScan } from './evaluation'
 import type { ManualAssessment } from './manualAssessment'
 import type { AccessibilityCheckResults } from './accessibility'
@@ -9,6 +10,7 @@ export interface SavedEvaluation {
   revision: number
   savedAt: string
   evaluation: Evaluation
+  reporting?: ReportingNotes
   assessments: ManualAssessment[]
   assessmentHistory: ManualAssessment[]
   sampleErrors?: Record<string, string>

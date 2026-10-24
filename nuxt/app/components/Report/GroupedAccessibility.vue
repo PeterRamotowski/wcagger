@@ -194,6 +194,7 @@ watch(() => props.results.evidence.grouping, () => {
         :key="finding.id"
         :finding="finding"
         :evidence="results.evidence"
+        :sample-outcomes="report.evaluationReview?.criteria"
         :selected="selected.includes(finding.id)"
         @select="choose"
       />
@@ -215,6 +216,7 @@ watch(() => props.results.evidence.grouping, () => {
           :key="finding.id"
           :finding="finding"
           :evidence="results.evidence"
+          :sample-outcomes="report.evaluationReview?.criteria"
           :selected="selected.includes(finding.id)"
           :occurrence-ids="group.occurrenceIds"
           @select="choose"

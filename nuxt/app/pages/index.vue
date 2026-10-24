@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import type { ManualAssessment } from '~~/shared/types/manualAssessment'
 import type { AccessibilityCheckResults } from '~~/shared/types/accessibility'
-import { scanMatchesSample, newEvaluation } from '~~/shared/utils/evaluation'
+import { newReportingNotes, normalizeReportingNotes } from '~~/shared/utils/reportingNotes'
+import { scanMatchesSample, validateEvaluation, newEvaluation } from '~~/shared/utils/evaluation'
 import { normalizeAssessments } from '~~/shared/utils/manualAssessments'
 import { buildGroupedReport } from '~~/shared/utils/reportPresentation'
 import { MAX_REPORT_HISTORY, MAX_ASSESSMENT_HISTORY } from '~~/shared/utils/savedEvaluation'
@@ -10,20 +11,24 @@ import { ExclamationTriangleIcon } from '@heroicons/vue/24/outline'
 const { isLoading, loadingStep, results, error, checkAccessibility, applyGroupingDecision, isGrouping, groupingError, setResults, resetTest } = useAccessibilityCheck()
 const { url, selectedTools, selectedRunners, wcagLevel, handleFormSubmit, exportReport, handlePDFGeneration } = useAccessibilityForm()
 const mode = ref('quick')
-const { scanHistory, detachBatch, currentRunIds, batchJob, batchReport, batchError, batchBusy, batchMatches, startBatch, retryBatch, refreshBatch, drawSamples, evaluation, scans, busySampleId, busy: evaluationBusy, error: evaluationError, sampleErrors, currentScan, scanSample, buildReport } = useEvaluation()
+const { scanHistory, detachBatch, currentRunIds, batchJob, batchReport, batchError, batchMatches, startBatch, retryBatch, refreshBatch, drawSamples, evaluation, scans, busySampleId, busy: evaluationBusy, error: evaluationError, sampleErrors, currentScan, scanSample, buildReport } = useEvaluation()
 const assessments = ref<ManualAssessment[]>([])
 const assessmentHistory = ref<ManualAssessment[]>([])
 const reportHistory = ref<AccessibilityCheckResults[]>([])
 const evaluationReport = ref<AccessibilityCheckResults | null>(null)
+const reporting = ref(newReportingNotes())
+const reviewPending = ref(false)
 const manualPending = ref(false)
+const pendingEdits = computed(() => manualPending.value || reviewPending.value)
 const savedDetached = ref(false)
 const workspaceError = ref<string | null>(null)
-const saved = useSavedEvaluations(() => ({ evaluation: evaluation.value, assessments: assessments.value, assessmentHistory: assessmentHistory.value, sampleErrors: sampleErrors.value, scans: scans.value, scanHistory: scanHistory.value, report: evaluationReport.value, reportHistory: reportHistory.value, tools: selectedTools.value, runners: selectedRunners.value }), (value) => {
+const saved = useSavedEvaluations(() => ({ evaluation: evaluation.value, reporting: reporting.value, assessments: assessments.value, assessmentHistory: assessmentHistory.value, sampleErrors: sampleErrors.value, scans: scans.value, scanHistory: scanHistory.value, report: evaluationReport.value, reportHistory: reportHistory.value, tools: selectedTools.value, runners: selectedRunners.value }), (value) => {
   detachBatch()
   evaluation.value = value.evaluation
   sampleErrors.value = value.sampleErrors ?? {}
   scans.value = value.scans
   scanHistory.value = value.scanHistory
+  reporting.value = normalizeReportingNotes(value.reporting)
   assessments.value = value.assessments
   assessmentHistory.value = value.assessmentHistory
   reportHistory.value = value.reportHistory
@@ -40,6 +45,8 @@ const saved = useSavedEvaluations(() => ({ evaluation: evaluation.value, assessm
   sampleErrors.value = {}
   scans.value = {}
   scanHistory.value = []
+  reporting.value = newReportingNotes()
+  reviewPending.value = false
   assessments.value = []
   assessmentHistory.value = []
   reportHistory.value = []
@@ -61,7 +68,10 @@ const publishEvaluationReport = (report: AccessibilityCheckResults) => {
     reportHistory.value.push(JSON.parse(JSON.stringify(old)))
   }
   const next = JSON.parse(JSON.stringify(report)) as AccessibilityCheckResults
-  if (next.evidence.evaluation) next.evidence.evaluation.manualAssessments = normalizeAssessments(assessments.value)
+  if (next.evidence.evaluation) {
+    next.evidence.evaluation.manualAssessments = normalizeAssessments(assessments.value)
+    next.evidence.evaluation.reporting = normalizeReportingNotes(reporting.value)
+  }
   evaluationReport.value = next
   setResults(next)
 }
@@ -87,7 +97,21 @@ const sampleStatuses = computed(() => Object.fromEntries(evaluation.value.sample
   }
   return [sample.id, busySampleId.value === sample.id ? 'scanning' : currentScan(sample, selectedTools.value, selectedRunners.value) ? 'scanned' : scans.value[sample.id]?.status === 'partial' && scanMatchesSample(scans.value[sample.id], sample, evaluation.value.targetStandard, selectedTools.value, selectedRunners.value) ? 'partial' : scans.value[sample.id] ? 'stale' : sampleErrors.value[sample.id] ? 'failed' : sample.preparation === 'manual' ? 'manual' : 'unscanned']
 })))
-const canBuildEvaluation = computed(() => assessments.value.length > 0 || ['scanned', 'partial'].some(status => Object.values(sampleStatuses.value).includes(status)) || (!!batchJob.value && !batchBusy.value && batchMatches(selectedTools.value, selectedRunners.value)))
+const canBuildEvaluation = computed(() => {
+  try {
+    validateEvaluation(evaluation.value)
+    return true
+  } catch { return false }
+})
+const workflowReviewReady = computed(() => {
+  const report = evaluationReport.value
+  if (!report?.evidence.evaluation) return false
+  try {
+    return JSON.stringify(validateEvaluation(evaluation.value)) === JSON.stringify(validateEvaluation(report.evidence.evaluation))
+      && JSON.stringify(normalizeAssessments(assessments.value)) === JSON.stringify(normalizeAssessments(report.evidence.evaluation.manualAssessments))
+      && JSON.stringify(Object.values(runIdsBySample.value).flat().sort()) === JSON.stringify(report.evidence.runs.map(run => run.id).sort())
+  } catch { return false }
+})
 const buildEvaluationReport = async () => {
   if (!historyReady()) return
   const report = await buildReport(selectedTools.value, selectedRunners.value, evaluationReport.value ? readonly(evaluationReport.value) : null)
@@ -170,7 +194,7 @@ provide('selectError', selectError)
     <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <fieldset
         class="mb-5 flex flex-wrap gap-4"
-        :disabled="isLoading || evaluationBusy || isGrouping || manualPending || saved.busy.value"
+        :disabled="isLoading || evaluationBusy || isGrouping || pendingEdits || saved.busy.value"
       >
         <legend class="sr-only">
           {{ $t('eval_mode') }}
@@ -193,7 +217,7 @@ provide('selectError', selectError)
         :dirty="saved.dirty.value"
         :error="saved.error.value"
         :status="saved.status.value"
-        :pending="manualPending"
+        :pending="pendingEdits"
         :history="{ scans: scanHistory.length, reports: reportHistory.length, assessments: assessmentHistory.length }"
         @refresh="saved.refreshList"
         @save="saved.save"
@@ -221,7 +245,7 @@ provide('selectError', selectError)
       <EvaluationSampleEditor
         v-if="mode === 'evaluation'"
         v-model="evaluation"
-        :busy="evaluationBusy || isGrouping || saved.busy.value || manualPending"
+        :busy="evaluationBusy || isGrouping || saved.busy.value || pendingEdits"
         :busy-sample-id="busySampleId"
         :statuses="sampleStatuses"
         :sample-errors="sampleErrors"
@@ -260,7 +284,7 @@ provide('selectError', selectError)
         :evaluation="evaluation"
         :run-ids="runIdsBySample"
         :report="assessmentReport"
-        :busy="evaluationBusy || isGrouping || saved.busy.value || assessmentHistory.length >= MAX_ASSESSMENT_HISTORY"
+        :busy="evaluationBusy || isGrouping || saved.busy.value || reviewPending || assessmentHistory.length >= MAX_ASSESSMENT_HISTORY"
         @archive="assessmentHistory.push($event)"
         @pending="manualPending = $event"
       />
@@ -270,6 +294,16 @@ provide('selectError', selectError)
       >
         {{ $t('manual_history_full') }}
       </p>
+
+      <EvaluationReportingEditor
+        v-if="mode === 'evaluation'"
+        :key="evaluation.id"
+        v-model="reporting"
+        :report="assessmentReport"
+        :ready="workflowReviewReady"
+        :busy="evaluationBusy || isGrouping || saved.busy.value || manualPending"
+        @pending="reviewPending = $event"
+      />
 
       <LoadingIndicator
         v-if="isLoading"

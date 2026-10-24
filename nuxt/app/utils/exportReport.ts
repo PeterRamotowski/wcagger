@@ -31,6 +31,17 @@ export function generateCSVContent(data: ExportData): string {
   }
   for (const assessment of data.report.manual?.records ?? []) add(['manual-assessment', '', '', assessment.observationIds.join('; '), '', assessment.outcome, '', assessment.criterionId, assessment.sampleId, assessment.stateId, '', '', assessment.reviewer, '', '', assessment.reviewedAt, JSON.stringify(assessment)])
   if (data.report.manual) add(['manual-coverage', '', '', '', '', '', '', '', '', '', '', '', '', '', '', data.timestamp, JSON.stringify({ expected: data.report.manual.expected, counts: data.report.manual.counts, stale: data.report.manual.stale })])
+  const evaluationReview = data.report.evaluationReview
+  if (evaluationReview) {
+    add(['workflow-summary', '', '', '', '', evaluationReview.status, '', '', '', '', '', '', '', '', '', data.timestamp, JSON.stringify({ notes: evaluationReview.notes, limitations: evaluationReview.limitations })])
+    for (const stage of evaluationReview.stages) add(['workflow-stage', '', '', '', stage.key, stage.status, '', '', '', '', '', '', stage.review?.reviewer ?? '', '', '', stage.review?.reviewedAt ?? data.timestamp, JSON.stringify(stage)])
+    for (const item of evaluationReview.unresolved) add(['unresolved-work', item.findingIds.join('; '), '', '', item.code, item.severity, '', item.criterionIds.join('; '), item.sampleIds.join('; '), '', '', '', '', '', '', data.timestamp, JSON.stringify(item)])
+    for (const criterion of evaluationReview.criteria) {
+      add(['criterion', '', '', '', criterion.title, criterion.outcome, '', criterion.id, '', '', criterion.url, '', '', '', '', data.timestamp, JSON.stringify({ level: criterion.level, sampleCount: criterion.samples.length })])
+      for (const sample of criterion.samples) add(['criterion-sample', sample.findingIds.join('; '), sample.occurrenceIds.join('; '), '', sample.sampleName, sample.outcome, '', criterion.id, sample.sampleId, sample.stateId, sample.url, '', '', '', '', data.timestamp, JSON.stringify(sample)])
+    }
+    for (const item of evaluationReview.issueTypes) add(['issue-type', item.findingIds.join('; '), item.occurrenceIds.join('; '), '', '', '', item.issueType, item.criteria.join('; '), item.sampleIds.join('; '), '', '', '', '', '', '', data.timestamp, JSON.stringify(item)])
+  }
   const occurrenceOf = new Map<string, { findingId: string, occurrenceId: string, sampleId: string, stateId: string }>()
   for (const finding of data.report.findings) {
     add(['finding', finding.id, '', '', finding.title, finding.outcome, finding.issueType, finding.criteria.join('; '), '', '', '', '', finding.sources.join('; '), finding.engines.join('; '), '', data.timestamp, JSON.stringify({ occurrences: finding.occurrences.length, affectedSamples: finding.affectedSamples })])
