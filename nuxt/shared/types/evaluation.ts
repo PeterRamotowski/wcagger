@@ -1,3 +1,4 @@
+import type { CandidateInspection } from './candidateInspection'
 import type { ReportingNotes } from './evaluationReport'
 import type { ManualAssessment } from './manualAssessment'
 import type { EvaluationExecution } from './evaluationJob'
@@ -61,6 +62,8 @@ export interface SampleSelection {
   candidateId?: string
 }
 export interface SamplingCandidate {
+  typeTags?: string[]
+  inspection?: CandidateInspection
   id: string
   url: string
   name: string

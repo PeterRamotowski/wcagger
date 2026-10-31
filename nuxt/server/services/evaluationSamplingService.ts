@@ -27,6 +27,7 @@ export function selectRandomSamples(input: unknown, choose: (upperBound: number)
     const candidate = candidates.splice(selected, 1)[0]!
     const sample = newEvaluationSample(candidate.url)
     sample.name = candidate.name
+    sample.typeTags = [...(candidate.typeTags ?? [])]
     sample.state.description = candidate.stateDescription
     sample.preparation = candidate.preparation
     sample.selectionReason = sampling.rationale

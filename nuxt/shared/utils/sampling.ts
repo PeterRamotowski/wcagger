@@ -1,3 +1,4 @@
+import { normalizeCandidateInspection, normalizeCandidateTypes } from './candidateInspection'
 import type { DeepReadonly } from 'vue'
 import type { Evaluation, EvaluationSample, EvaluationScope, InventoryEntry, RandomDraw, SampleSelection, SamplingCandidate, SamplingPlan } from '../types/evaluation'
 import type { ReportFinding } from '../types/report'
@@ -34,7 +35,7 @@ function uniqueCandidates(candidates: DeepReadonly<SamplingCandidate[]>, used: S
       return false
     used.add(key)
     return true
-  }).map(candidate => ({ ...candidate }))
+  }).map(({ typeTags, inspection, ...candidate }) => ({ ...candidate, ...(typeTags !== undefined && { typeTags: [...typeTags] }), ...(inspection && { inspection: normalizeCandidateInspection(inspection) }) }))
 }
 export function samplingCoverage(evaluation: DeepReadonly<Evaluation>, scannedIds: readonly string[] = []) {
   const structured = evaluation.samples.filter(sample => sample.selection?.kind !== 'random')
@@ -131,7 +132,7 @@ function candidates(value: unknown): SamplingCandidate[] {
     if (seen.has(key) || !stateDescription || !['initial-page', 'manual'].includes(String(value.preparation)))
       throw new Error('Invalid or duplicate candidate identity')
     seen.add(key)
-    return { id: key, url: url(value.url), name: text(value.name, 200), stateDescription, preparation: value.preparation as SamplingCandidate['preparation'] }
+    return { ...(value.typeTags !== undefined && { typeTags: normalizeCandidateTypes(value.typeTags) }), ...(value.inspection !== undefined && { inspection: normalizeCandidateInspection(value.inspection) }), id: key, url: url(value.url), name: text(value.name, 200), stateDescription, preparation: value.preparation as SamplingCandidate['preparation'] }
   })
 }
 function scopeMetadata(value: Record<string, unknown>): EvaluationScope {

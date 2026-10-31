@@ -9,6 +9,31 @@ defineProps<{ report: GroupedReport }>()
     v-if="report.evaluation && report.planning"
     class="space-y-4 [overflow-wrap:anywhere]"
   >
+    <details
+      v-if="report.evaluation.sampling?.candidates.some(candidate => candidate.inspection)"
+      class="rounded border border-gray-200 p-3"
+      data-report-inspections
+    >
+      <summary class="cursor-pointer font-medium">
+        {{ $t('inspection_captured') }}
+      </summary>
+      <section
+        v-for="candidate in report.evaluation.sampling.candidates.filter(candidate => candidate.inspection)"
+        :key="candidate.id"
+        class="mt-3 space-y-2 rounded border p-3 text-sm"
+      >
+        <p class="font-medium">
+          {{ candidate.name || candidate.url }}
+        </p>
+        <p>{{ candidate.inspection!.method }} · {{ candidate.inspection!.inspectedAt }} · {{ candidate.inspection!.bytes }} bytes</p>
+        <p>{{ candidate.inspection!.requestedUrl }} → {{ candidate.inspection!.finalUrl }}</p>
+        <p>{{ $t('inspection_suggested') }}: {{ candidate.inspection!.suggestedTypes.join(', ') || '—' }}</p>
+        <p>{{ $t('eval_types') }}: {{ candidate.typeTags?.join(', ') || '—' }}</p>
+        <p class="text-gray-600">
+          {{ $t('inspection_record_help') }}
+        </p>
+      </section>
+    </details>
     <details class="rounded border border-gray-200 p-3">
       <summary class="cursor-pointer font-medium">
         {{ $t('planning_scope') }}

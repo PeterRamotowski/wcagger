@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import CandidateImport from './CandidateImport.vue'
+import CandidateInspection from './CandidateInspection.vue'
 import type { Evaluation, EvaluationScope, InventoryEntry, SamplingCandidate, SamplingPlan } from '~~/shared/types/evaluation'
 import { newRecordId, parseBulkUrls, parseTypeTags, validSampleUrl } from '~~/shared/utils/evaluation'
 import { INVENTORY_KINDS, MAX_CANDIDATES, MAX_DRAWS, newSamplingPlan, samplingCoverage } from '~~/shared/utils/sampling'
@@ -219,6 +220,11 @@ const value = (event: Event) => (event.target as HTMLInputElement).value
           :busy="busy"
           @import="sampling({ candidates: [...plan.candidates, ...$event.candidates], source: $event.source, coverage: 'unknown' })"
         />
+        <CandidateInspection
+          :candidates="plan.candidates"
+          :busy="busy"
+          @apply="sampling({ candidates: plan.candidates.map(row => row.id === $event.id ? { ...row, ...$event } : row), coverage: 'unknown' })"
+        />
         <p class="text-sm">
           {{ $t('planning_eligible', { count: coverage.eligibleCandidates, total: plan.candidates.length }) }}
         </p>
@@ -249,6 +255,19 @@ const value = (event: Event) => (event.target as HTMLInputElement).value
                 class="mt-1 block w-full rounded border border-gray-300 px-3 py-2"
                 @input="patchCandidate(candidate.id, { [key]: value($event) })"
               ></label>
+              <label class="block text-sm font-medium">{{ $t('eval_types') }}<input
+                :value="candidate.typeTags?.join(', ')"
+                maxlength="2100"
+                class="mt-1 block w-full rounded border border-gray-300 px-3 py-2"
+                @change="patchCandidate(candidate.id, { typeTags: parseTypeTags(value($event)) })"
+              ></label>
+              <p
+                v-if="candidate.inspection"
+                class="break-all text-sm text-gray-600"
+                data-inspection-record
+              >
+                {{ $t('inspection_captured') }}: {{ candidate.inspection.inspectedAt }} · {{ candidate.inspection.requestedUrl }} → {{ candidate.inspection.finalUrl }} · {{ candidate.inspection.bytes }} bytes<br>{{ $t('inspection_suggested') }}: {{ candidate.inspection.suggestedTypes.join(', ') || $t('inspection_none') }}<br>{{ $t('inspection_record_help') }}
+              </p>
               <label class="block text-sm font-medium">{{ $t('eval_preparation') }}<select
                 :value="candidate.preparation"
                 class="mt-1 block w-full rounded border border-gray-300 px-3 py-2"
